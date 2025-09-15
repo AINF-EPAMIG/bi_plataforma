@@ -77,7 +77,7 @@ export default function RegionaisDashboard() {
         } else {
           console.warn('Erro ao carregar dados das fazendas:', fazendasResult.error);
         }
-      } catch (err) {
+      } catch {
         setError('Erro de conexão com o servidor');
       } finally {
         setLoading(false);
@@ -318,7 +318,7 @@ export default function RegionaisDashboard() {
                     <tbody>
                       {fazendasData.fazendas
                         .sort((a, b) => b.total - a.total)
-                        .map((fazenda, index) => (
+                        .map((fazenda) => (
                         <tr key={fazenda.id} className="border-b hover:bg-gray-50">
                           <td className="py-1 px-2 font-semibold text-gray-800">{fazenda.sigla_fazenda}</td>
                           <td className="py-1 px-2 text-gray-700 truncate max-w-[120px]">{fazenda.nome_fazenda}</td>

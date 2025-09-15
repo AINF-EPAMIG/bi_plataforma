@@ -29,7 +29,11 @@ interface ProjetosData {
     projetos_ano_vigente: number;
   };
   ano_vigente: number;
+  error?: string;
 }
+
+// Alias para manter compatibilidade
+type DashboardData = ProjetosData;
 
 const COLORS = ['#025C3E', '#157A5B', '#228B77', '#2F9C93', '#3CADAF', '#4FB8C7', '#6BC3DA', '#87CEEC'];
 
@@ -48,16 +52,19 @@ export default function ProjetosDashboard() {
     const fetchData = async () => {
       try {
         const response = await fetch('/api/dashboard/projetos');
-        const result = await response.json();
+        const result: DashboardData = await response.json();
         
         if (result.success) {
           setData(result);
         } else {
           setError(result.error || 'Erro ao carregar dados');
         }
-      } catch (err) {
-        setError('Erro de conexão com o servidor');
-        console.error('Erro no fetch:', err);
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          setError('Erro de conexão com o servidor: ' + error.message);
+        } else {
+          setError('Erro de conexão com o servidor');
+        }
       } finally {
         setLoading(false);
       }
@@ -87,7 +94,7 @@ export default function ProjetosDashboard() {
     const { programas } = getDadosFiltrados();
     
     return anos.map(ano => {
-      const anoData: { [key: string]: any } = { ano: ano.toString() };
+      const anoData: Record<string, string | number> = { ano: ano.toString() };
       
       programas.forEach(programa => {
         const valor = tipoVisualizacao === 'quantitativo' 

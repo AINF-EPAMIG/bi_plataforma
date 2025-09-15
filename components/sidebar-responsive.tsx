@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Separator } from "./ui/separator";
 import { Globe, Mail, Menu, X } from "lucide-react";
+import Image from 'next/image';
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -46,12 +47,15 @@ export default function Sidebar() {
           <Separator className="bg-[#157A5B] h-[1px] my-4" />
           
           {/* Logo */}
-          <div className="flex items-center justify-center mb-6">
-            <img 
-              src="/epamig_branca.png" 
-              alt="Logo Epamig" 
-              className="w-full max-w-[140px] h-auto" 
+          <div className="flex items-center px-4 py-2">
+            <Image
+              src="/logo-embrapa.png"
+              alt="Logo Embrapa"
+              width={32}
+              height={32}
+              className="h-8 w-8 mr-3"
             />
+            <span className="text-lg font-semibold text-green-800">BI Plataforma</span>
           </div>
           
           {/* Links externos */}
