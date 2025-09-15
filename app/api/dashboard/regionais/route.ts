@@ -15,15 +15,15 @@ export async function GET() {
      SELECT 
     r.id,
     r.nome,
-    COUNT(p.id) AS total
+    COUNT(u.id) AS total
 FROM regional r
-LEFT JOIN fazenda f ON r.id = f.regional_id
-LEFT JOIN usuario p 
-    ON f.id = p.fazenda_id 
-   AND p.status = 1 
-   AND p.tipo = 'Pesquisador'
+LEFT JOIN usuario u 
+       ON u.regional_id = r.id
+      AND u.status = 1
+      AND u.tipo = 'Pesquisador'
 GROUP BY r.id, r.nome
-ORDER BY total DESC
+ORDER BY total DESC;
+
     `);
 
     const regionais = result as RegionalData[];
