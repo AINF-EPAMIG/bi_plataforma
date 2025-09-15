@@ -25,30 +25,20 @@ export async function GET() {
     // Consulta simulada usando apenas a tabela usuario existente
     // Simulando fazendas baseadas nos tipos de usuário
     const [rows] = await conn.query<FazendaRow[]>(`
-      SELECT 
-        1 as id,
-        'Campo Experimental Prudente de Morais' as nome_fazenda,
-        'CEPM' as sigla_fazenda,
-        'Regional Centro-Oeste' as nome_regional,
-        COUNT(CASE WHEN tipo = 'admin' THEN 1 END) AS total
-      FROM usuario WHERE status = 1
-      UNION ALL
-      SELECT 
-        2 as id,
-        'Campo Experimental Lavras' as nome_fazenda,
-        'CEL' as sigla_fazenda,
-        'Regional Sul de Minas' as nome_regional,
-        COUNT(CASE WHEN tipo = 'chefia' THEN 1 END) AS total
-      FROM usuario WHERE status = 1
-      UNION ALL
-      SELECT 
-        3 as id,
-        'Campo Experimental Uberaba' as nome_fazenda,
-        'CEU' as sigla_fazenda,
-        'Regional Triângulo' as nome_regional,
-        COUNT(CASE WHEN tipo = 'usuario' THEN 1 END) AS total
-      FROM usuario WHERE status = 1
-      ORDER BY nome_regional, nome_fazenda
+     SELECT 
+    f.id,
+    f.nome_fazenda,
+    f.sigla_fazenda,
+    r.nome AS nome_regional,
+    COUNT(u.id) AS total
+FROM fazenda f
+INNER JOIN regional r ON r.id = f.regional_id
+LEFT JOIN usuario u 
+       ON u.fazenda_id = f.id 
+      AND u.status = 1   -- só usuários ativos
+      AND u.tipo = 'pesquisador'  -- ou 'admin', 'chefia' etc.
+GROUP BY f.id, f.nome_fazenda, f.sigla_fazenda, r.nome
+ORDER BY r.nome, f.nome_fazenda;
     `);
 
     // Mapeamento corrigido
