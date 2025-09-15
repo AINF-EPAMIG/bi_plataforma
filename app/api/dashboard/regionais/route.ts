@@ -12,16 +12,18 @@ interface RegionalData {
 export async function GET() {
   try {
     const result = await query(`
-      SELECT 
-        r.id,
-        r.nome,
-        COUNT(p.id) as total
-      FROM regionais r
-      LEFT JOIN fazendas f ON r.id = f.regional_id
-      LEFT JOIN pesquisadores p ON f.id = p.fazenda_id
-      WHERE p.ativo = true
-      GROUP BY r.id, r.nome
-      ORDER BY total DESC
+     SELECT 
+    r.id,
+    r.nome,
+    COUNT(p.id) AS total
+FROM regional r
+LEFT JOIN fazenda f ON r.id = f.regional_id
+LEFT JOIN usuario p 
+    ON f.id = p.fazenda_id 
+   AND p.status = 1 
+   AND p.tipo = 'Pesquisador'
+GROUP BY r.id, r.nome
+ORDER BY total DESC
     `);
 
     const regionais = result as RegionalData[];
