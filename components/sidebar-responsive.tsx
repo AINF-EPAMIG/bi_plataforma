@@ -40,7 +40,7 @@ export default function Sidebar() {
       >
         <div className="p-4 lg:p-6 overflow-y-auto">
           {/* Título */}
-          <h1 className="text-2xl lg:text-[32px] font-bold text-[#F9F9F9] leading-tight mb-4 mt-12 lg:mt-0">
+          <h1 className="text-2xl lg:text-[32px] font-bold text-[#F9F9F9] leading-tight mb-4 mt-12 lg:mt-0 text-center">
             Plataforma<br />Interativa
           </h1>
           
