@@ -48,9 +48,11 @@ export default function Sidebar() {
             rel="noopener noreferrer"
             className="flex flex-col items-center"
           >
-            <img
+            <Image
               src="/icon_totvs.svg"
               alt="Portal ADM"
+              width={20}
+              height={20}
               className="w-5 h-5 mb-1"
               style={{ filter: "brightness(0) invert(1)" }}
             />

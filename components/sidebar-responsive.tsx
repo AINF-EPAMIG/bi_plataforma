@@ -78,9 +78,11 @@ export default function Sidebar() {
               className="flex flex-col items-center group hover:scale-105 transition-transform"
             >
               <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center mb-1 group-hover:bg-white/20 transition-colors">
-                <img 
+                <Image 
                   src="/icon_totvs.svg" 
                   alt="Portal ADM" 
+                  width={20}
+                  height={20}
                   className="w-5 h-5" 
                   style={{ filter: 'brightness(0) invert(1)' }} 
                 />
