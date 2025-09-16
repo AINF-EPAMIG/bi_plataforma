@@ -30,23 +30,22 @@ interface FazendasData {
   totalGeral: number;
 }
 
-// Paleta diversificada inspirada no Power BI e institucional
+// Paleta de cores vibrantes diversificada
 const COLORS = [
-  '#025C3E', // Verde institucional
- '#FF9800', // Laranja vibrante (contraste forte, ótimo para alertas/destaques)
-'#FFC107', // Amarelo ouro (ótimo para indicadores de desempenho)
-'#1976D2', // Azul médio (equilíbrio e profissionalismo, bom em dashboards)
-'#455A64', // Cinza azulado (neutro, ajuda a equilibrar cores fortes)
-  '#F9C846', // Amarelo Power BI
-  '#F39200', // Laranja Power BI
-  '#E94F37', // Vermelho institucional
-  '#5C6BC0', // Azul institucional
-  '#0081A7', // Azul claro
-  '#6BC3DA', // Azul água
-  '#A259F7', // Roxo Power BI
-  '#F7B2B7', // Rosa claro
-  '#FFB400', // Amarelo institucional
-  '#00BFAE', // Verde institucional claro
+  '#970FF2', // Roxo vibrante
+  '#0597F2', // Azul vibrante
+  '#49D907', // Verde lima
+  '#0000FF', // Azul puro
+  '#EAF205', // Amarelo vibrante
+  '#6BDDFD', // Azul claro
+  '#F24607', // Laranja vermelho
+  '#8F0054', // Magenta escuro
+  '#FF9100', // Laranja vibrante
+  '#35792E', // Verde escuro
+  '#54ED65', // Verde claro vibrante
+  '#BA1979', // Rosa magenta
+  '#68D31B', // Verde lima claro
+  '#00FFF7', // Ciano vibrante
 ];
 
 export default function RegionaisDashboard() {
@@ -140,13 +139,13 @@ export default function RegionaisDashboard() {
     {
       label: 'Regionais',
       value: 5,
-      color: '#025C3E',
+      color: '#269701ff',
       desc: 'Unidades Regionais'
     },
     {
       label: 'Instituições de Ensino',
       value: 2,
-      color: '#F9C846',
+      color: '#00CFF4',
       desc: 'Institutos Tecnológicos'
     },
     {
@@ -158,7 +157,7 @@ export default function RegionaisDashboard() {
     {
       label: 'Pesquisadores Ativos',
       value: data?.totalGeral || 0,
-      color: '#223A5E', // Azul marinho institucional
+      color: '#7237A5', // Azul marinho institucional
       desc: 'Total de pesquisadores'
     }
   ];

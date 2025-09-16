@@ -35,7 +35,22 @@ interface ProjetosData {
 // Alias para manter compatibilidade
 type DashboardData = ProjetosData;
 
-const COLORS = ['#025C3E', '#157A5B', '#228B77', '#2F9C93', '#3CADAF', '#4FB8C7', '#6BC3DA', '#87CEEC'];
+const COLORS = [
+  '#970FF2', // Roxo vibrante
+  '#0597F2', // Azul vibrante
+  '#49D907', // Verde lima
+  '#0000FF', // Azul puro
+  '#EAF205', // Amarelo vibrante
+  '#6BDDFD', // Azul claro
+  '#F24607', // Laranja vermelho
+  '#8F0054', // Magenta escuro
+  '#FF9100', // Laranja vibrante
+  '#35792E', // Verde escuro
+  '#54ED65', // Verde claro vibrante
+  '#BA1979', // Rosa magenta
+  '#68D31B', // Verde lima claro
+  '#00FFF7', // Ciano vibrante
+];
 
 export default function ProjetosDashboard() {
   const [data, setData] = useState<ProjetosData | null>(null);
@@ -189,7 +204,7 @@ export default function ProjetosDashboard() {
         <Card className="bg-gradient-to-br from-[#025C3E] via-[#157A5B] to-[#228B77] text-white border-0">
           <CardContent className="relative z-10 py-4 md:py-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-              <div>
+              <div className="p-3 rounded-lg transition-all duration-300 hover:bg-white/10 hover:scale-105 cursor-pointer">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <CalendarIcon size={20} />
                   <span className="text-sm font-medium">Ano Vigente</span>
@@ -197,7 +212,7 @@ export default function ProjetosDashboard() {
                 <p className="text-xl md:text-2xl font-bold">{data.ano_vigente}</p>
                 <p className="text-xs text-green-100 mt-1">do ano atual</p>
               </div>
-              <div>
+              <div className="p-3 rounded-lg transition-all duration-300 hover:bg-white/10 hover:scale-105 cursor-pointer">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <TrendingUpIcon size={20} />
                   <span className="text-sm font-medium">Projetos {data.ano_vigente}</span>
@@ -205,7 +220,7 @@ export default function ProjetosDashboard() {
                 <p className="text-xl md:text-2xl font-bold">{data.totais_gerais.projetos_ano_vigente}</p>
                 <p className="text-xs text-green-100 mt-1">do ano atual</p>
               </div>
-              <div>
+              <div className="p-3 rounded-lg transition-all duration-300 hover:bg-white/10 hover:scale-105 cursor-pointer">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <DollarSignIcon size={20} />
                   <span className="text-sm font-medium">Valor {data.ano_vigente}</span>
@@ -215,7 +230,7 @@ export default function ProjetosDashboard() {
                 </p>
                 <p className="text-xs text-green-100 mt-1">do ano atual</p>
               </div>
-              <div>
+              <div className="p-3 rounded-lg transition-all duration-300 hover:bg-white/10 hover:scale-105 cursor-pointer">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <FilterIcon size={20} />
                   <span className="text-sm font-medium">Programas</span>
