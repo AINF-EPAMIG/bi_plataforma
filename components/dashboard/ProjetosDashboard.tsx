@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -202,6 +202,51 @@ export default function ProjetosDashboard() {
       
       return anoData;
     });
+  };
+
+  // Função para preparar dados para gráfico de pizza
+  const prepararDadosPizza = (tipoVisualizacao: 'quantitativo' | 'financeiro') => {
+    const { programas } = getDadosFiltrados();
+    
+    // Determinar o ano para o gráfico de pizza
+    let anoParaPizza: number;
+    if (filtroAno !== 'todos') {
+      // Se um filtro de ano específico está ativo, usar esse ano
+      anoParaPizza = parseInt(filtroAno);
+    } else if (anoSelecionado !== 0) {
+      // Se um ano específico foi selecionado no card de resumo
+      anoParaPizza = anoSelecionado;
+    } else {
+      // Fallback para o ano atual se nenhum estiver selecionado
+      anoParaPizza = anoAtual;
+    }
+    
+    const dadosPizza = programas.map((programa, index) => {
+      const valor = tipoVisualizacao === 'quantitativo' 
+        ? programa.projetos_por_ano[anoParaPizza] || 0
+        : programa.valores_por_ano[anoParaPizza] || 0;
+      
+      return {
+        name: programa.nome,
+        value: Number(valor) || 0,
+        color: COLORS[index % COLORS.length]
+      };
+    }).filter(item => item.value > 0); // Filtrar apenas valores maiores que 0
+    
+    return dadosPizza;
+  };
+
+  // Função para verificar se deve mostrar gráfico de pizza
+  const deveExibirGraficoPizza = () => {
+    // Mostrar pizza se um ano específico foi selecionado no filtro
+    if (filtroAno !== 'todos') {
+      return true;
+    }
+    // OU se um ano específico foi selecionado no card de resumo (diferente de "Todos")
+    if (anoSelecionado !== 0) {
+      return true;
+    }
+    return false;
   };
 
   // Função para exportar dados
@@ -456,81 +501,11 @@ export default function ProjetosDashboard() {
         </div>
       </div>
 
-      {/* Filtros e Controles - Mostrar apenas no modo gráficos */}
-      {viewMode === 'graficos' && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <CardTitle className="text-lg md:text-xl flex items-center gap-2">
-                  <FilterIcon size={20} className="text-[#025C3E]" />
-                  Filtros e Controles
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  Personalize a visualização dos dados
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Programa</label>
-                <Select value={filtroPrograma} onValueChange={setFiltroPrograma}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos os Programas</SelectItem>
-                    {data.programas.map(programa => (
-                      <SelectItem key={programa.id} value={programa.id.toString()}>
-                        {programa.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Ano</label>
-                <Select value={filtroAno} onValueChange={setFiltroAno}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos os Anos</SelectItem>
-                    {anos.map(ano => (
-                      <SelectItem key={ano} value={ano.toString()}>
-                        {ano}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-end">
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setFiltroPrograma('todos');
-                    setFiltroAno('todos');
-                    if (data) {
-                      setProgramasSelecionados(data.programas.map(p => p.id));
-                    }
-                  }}
-                  className="w-full"
-                >
-                  Limpar Filtros
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Renderização Condicional - Gráficos ou Tabelas */}
       {viewMode === 'graficos' ? (
         /* Gráficos */
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
-          {/* Gráfico de Barras - Projetos por Ano */}
+          {/* Gráfico de Barras/Pizza - Projetos por Ano */}
           <Card className="hover:shadow-lg transition-shadow duration-300">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg md:text-xl flex items-center gap-2">
@@ -542,34 +517,111 @@ export default function ProjetosDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={prepararDadosGraficos('quantitativo')} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="ano" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip 
-                    formatter={(value, name) => [value, name]}
-                    contentStyle={{ 
-                      backgroundColor: 'white', 
-                      border: '2px solid #228B77',
-                      borderRadius: '8px',
-                      fontSize: '12px'
-                    }}
-                  />
-                  {programas.map((programa, index) => (
-                    <Bar 
-                      key={programa.id}
-                      dataKey={programa.nome} 
-                      fill={COLORS[index % COLORS.length]} 
-                      radius={[2, 2, 0, 0]}
-                    />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="flex flex-col lg:flex-row items-center justify-center gap-6">
+                {deveExibirGraficoPizza() ? (
+                  <>
+                    {/* Gráfico de Pizza */}
+                    <div className="flex-shrink-0">
+                      <ResponsiveContainer width={300} height={300}>
+                        <PieChart>
+                          <Pie
+                            data={prepararDadosPizza('quantitativo')}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={false}
+                            outerRadius={120}
+                            fill="#8884d8"
+                            dataKey="value"
+                            stroke="#fff"
+                            strokeWidth={2}
+                          >
+                            {prepararDadosPizza('quantitativo').map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            formatter={(value, name) => [value, 'Projetos']}
+                            labelFormatter={(label) => `Programa: ${label}`}
+                            contentStyle={{ 
+                              backgroundColor: 'white', 
+                              border: '2px solid #228B77',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Legenda Personalizada */}
+                    <div className="flex flex-col gap-3 min-w-0 flex-1">
+                      <h4 className="font-semibold text-gray-700 mb-2">Distribuição por Programa</h4>
+                      {(() => {
+                        const dadosPizza = prepararDadosPizza('quantitativo');
+                        const total = dadosPizza.reduce((sum, item) => sum + item.value, 0);
+                        
+                        return dadosPizza.map((entry, index) => {
+                          const percentage = total > 0 ? (entry.value / total * 100) : 0;
+                          return (
+                            <div key={index} className="flex items-center justify-between gap-4 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <div 
+                                  className="w-4 h-4 rounded-full flex-shrink-0" 
+                                  style={{ backgroundColor: entry.color }}
+                                ></div>
+                                <span className="text-sm text-gray-700 truncate">{entry.name}</span>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <span className="text-sm font-semibold text-gray-900">{entry.value}</span>
+                                <span className="text-sm text-gray-500 min-w-[45px] text-right">
+                                  {percentage.toFixed(1)}%
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                      <div className="border-t pt-2 mt-2">
+                        <div className="flex justify-between items-center font-semibold text-gray-800">
+                          <span>Total</span>
+                          <span>{prepararDadosPizza('quantitativo').reduce((sum, item) => sum + item.value, 0)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart data={prepararDadosGraficos('quantitativo')} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="ano" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip 
+                        formatter={(value, name) => [value, name]}
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          border: '2px solid #228B77',
+                          borderRadius: '8px',
+                          fontSize: '12px'
+                        }}
+                      />
+                      {programas.map((programa, index) => (
+                        <Bar 
+                          key={programa.id}
+                          dataKey={programa.nome} 
+                          fill={COLORS[index % COLORS.length]} 
+                          radius={[2, 2, 0, 0]}
+                        />
+                      ))}
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
             </CardContent>
           </Card>
 
-          {/* Gráfico de Linha - Dados do Ano Selecionado */}
+          {/* Gráfico de Barras/Pizza - Dados Financeiros */}
           <Card className="hover:shadow-lg transition-shadow duration-300">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg md:text-xl flex items-center gap-2">
@@ -581,30 +633,111 @@ export default function ProjetosDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={prepararDadosGraficos('financeiro')} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="ano" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip 
-                    formatter={(value, name) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, name]}
-                    contentStyle={{ 
-                      backgroundColor: 'white', 
-                      border: '2px solid #2F9C93',
-                      borderRadius: '8px',
-                      fontSize: '12px'
-                    }}
-                  />
-                  {programas.map((programa, index) => (
-                    <Bar 
-                      key={programa.id}
-                      dataKey={programa.nome} 
-                      fill={COLORS[index % COLORS.length]}
-                      radius={[2, 2, 0, 0]}
-                    />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="flex flex-col lg:flex-row items-center justify-center gap-6">
+                {deveExibirGraficoPizza() ? (
+                  <>
+                    {/* Gráfico de Pizza */}
+                    <div className="flex-shrink-0">
+                      <ResponsiveContainer width={300} height={300}>
+                        <PieChart>
+                          <Pie
+                            data={prepararDadosPizza('financeiro')}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={false}
+                            outerRadius={120}
+                            fill="#8884d8"
+                            dataKey="value"
+                            stroke="#fff"
+                            strokeWidth={2}
+                          >
+                            {prepararDadosPizza('financeiro').map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            formatter={(value, name) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Valor']}
+                            labelFormatter={(label) => `Programa: ${label}`}
+                            contentStyle={{ 
+                              backgroundColor: 'white', 
+                              border: '2px solid #2F9C93',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Legenda Personalizada */}
+                    <div className="flex flex-col gap-3 min-w-0 flex-1">
+                      <h4 className="font-semibold text-gray-700 mb-2">Distribuição Financeira</h4>
+                      {(() => {
+                        const dadosPizza = prepararDadosPizza('financeiro');
+                        const total = dadosPizza.reduce((sum, item) => sum + item.value, 0);
+                        
+                        return dadosPizza.map((entry, index) => {
+                          const percentage = total > 0 ? (entry.value / total * 100) : 0;
+                          return (
+                            <div key={index} className="flex items-center justify-between gap-4 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <div 
+                                  className="w-4 h-4 rounded-full flex-shrink-0" 
+                                  style={{ backgroundColor: entry.color }}
+                                ></div>
+                                <span className="text-sm text-gray-700 truncate">{entry.name}</span>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <span className="text-sm font-semibold text-gray-900">
+                                  R$ {Number(entry.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </span>
+                                <span className="text-sm text-gray-500 min-w-[45px] text-right">
+                                  {percentage.toFixed(1)}%
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                      <div className="border-t pt-2 mt-2">
+                        <div className="flex justify-between items-center font-semibold text-gray-800">
+                          <span>Total</span>
+                          <span>
+                            R$ {prepararDadosPizza('financeiro').reduce((sum, item) => sum + item.value, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart data={prepararDadosGraficos('financeiro')} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="ano" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip 
+                        formatter={(value, name) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, name]}
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          border: '2px solid #2F9C93',
+                          borderRadius: '8px',
+                          fontSize: '12px'
+                        }}
+                      />
+                      {programas.map((programa, index) => (
+                        <Bar 
+                          key={programa.id}
+                          dataKey={programa.nome} 
+                          fill={COLORS[index % COLORS.length]}
+                          radius={[2, 2, 0, 0]}
+                        />
+                      ))}
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
