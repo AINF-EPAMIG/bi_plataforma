@@ -40,7 +40,7 @@ export default function Sidebar() {
       >
         <div className="p-4 lg:p-6 overflow-y-auto">
           {/* Título */}
-          <h1 className="text-2xl lg:text-[32px] font-bold text-[#F9F9F9] leading-tight mb-4 mt-12 lg:mt-0 text-center">
+          <h1 className="text-2xl lg:text-[32px] font-bold text-[#F9F9F9] leading-tight mb-4 mt-12 lg:mt-0 text-center cursor-pointer hover:text-white hover:scale-105 transition-all duration-300 hover:drop-shadow-lg">
             Plataforma<br />Interativa
           </h1>
           
