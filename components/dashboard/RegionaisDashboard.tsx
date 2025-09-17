@@ -137,28 +137,20 @@ export default function RegionaisDashboard() {
   // Cards institucionais no topo (incluindo total de pesquisadores)
   const cardsResumo = [
     {
-      label: 'Regionais',
+      label: 'Unidades Regionais',
       value: 5,
-      color: '#269701ff',
-      desc: 'Unidades Regionais'
     },
     {
-      label: 'Instituições de Ensino',
+      label: 'Institutos Tecnológicos',
       value: 2,
-      color: '#00CFF4',
-      desc: 'Institutos Tecnológicos'
     },
     {
       label: 'Campos Experimentais',
       value: 21,
-      color: '#F39200',
-      desc: 'Campos experimentais ativos'
     },
     {
-      label: 'Pesquisadores Ativos',
+      label: 'Total de pesquisadores',
       value: data?.totalGeral || 0,
-      color: '#7237A5', // Azul marinho institucional
-      desc: 'Total de pesquisadores'
     }
   ];
 
@@ -169,14 +161,10 @@ export default function RegionaisDashboard() {
         {cardsResumo.map((card) => (
           <div
             key={card.label}
-            className="flex flex-col items-center justify-center rounded-xl py-6 px-4"
-            style={{
-              background: card.color
-            }}
+            className="flex flex-col items-center justify-center rounded-xl py-6 px-4 bg-white shadow-md border border-gray-100"
           >
-            <div className="text-3xl font-extrabold text-white">{card.value}</div>
-            <div className="text-base font-bold text-white mt-1">{card.label}</div>
-            <div className="text-xs text-white/80 mt-1">{card.desc}</div>
+            <div className="text-3xl font-extrabold text-gray-900">{card.value}</div>
+            <div className="text-base text-gray-700 mt-1">{card.label}</div>
           </div>
         ))}
       </div>
@@ -231,9 +219,11 @@ export default function RegionaisDashboard() {
                     className="inline-block w-3 h-3 rounded-full"
                     style={{ backgroundColor: COLORS[index % COLORS.length] }}
                   ></span>
-                  <span className="font-medium text-gray-700 truncate max-w-[120px]">{regional.nome}</span>
-                  <span className="ml-auto text-gray-500 font-semibold">{regional.total}</span>
-                  <span className="ml-2 text-xs text-gray-400">
+                  <div className="flex items-center gap-1 min-w-0">
+                    <span className="font-medium text-gray-700 truncate">{regional.nome}</span>
+                    <span className="text-gray-500 font-semibold whitespace-nowrap">({regional.total})</span>
+                  </div>
+                  <span className="ml-auto text-xs text-gray-400">
                     {data.totalGeral > 0 ? ((regional.total / data.totalGeral) * 100).toFixed(1) : '0.0'}%
                   </span>
                 </div>

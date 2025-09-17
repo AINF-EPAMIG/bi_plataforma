@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -379,13 +379,11 @@ export default function ProjetosDashboard() {
   return (
     <div className="space-y-4 md:space-y-6">
       {/* Card de Resumo - AGORA MOSTRA DADOS DO ANO SELECIONADO */}
-      <div className="relative overflow-hidden">
-        <Card className="bg-gradient-to-br from-[#025C3E] via-[#157A5B] to-[#228B77] text-white border-0">
-          <CardContent className="relative z-10 py-4 md:py-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+      <div className="relative">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
               <Dialog open={isYearModalOpen} onOpenChange={setIsYearModalOpen}>
                 <DialogTrigger asChild>
-                  <div className="p-3 rounded-lg transition-all duration-300 hover:bg-white/10 hover:scale-105 cursor-pointer">
+                  <div className="flex flex-col items-center justify-center rounded-xl py-6 px-4 bg-white shadow-md border border-gray-100 hover:bg-gray-50 hover:shadow-md hover:scale-[1.02] cursor-pointer">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <CalendarIcon size={20} />
                       <span className="text-sm font-medium">Ano Selecionado</span>
@@ -393,7 +391,7 @@ export default function ProjetosDashboard() {
                     <p className="text-xl md:text-2xl font-bold">
                       {anoSelecionado === 0 ? 'Todos' : anoSelecionado}
                     </p>
-                    <p className="text-xs text-green-100 mt-1">clique para alterar</p>
+                    <p className="text-xs text-gray-500 mt-1">clique para alterar</p>
                   </div>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md">
@@ -425,7 +423,7 @@ export default function ProjetosDashboard() {
                 </DialogContent>
               </Dialog>
               
-              <div className="p-3 rounded-lg transition-all duration-300 hover:bg-white/10 hover:scale-105 cursor-pointer">
+              <div className="flex flex-col items-center justify-center rounded-xl py-6 px-4 bg-white shadow-md border border-gray-100 hover:bg-gray-50 hover:shadow-md hover:scale-[1.02] cursor-pointer">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <TrendingUpIcon size={20} />
                   <span className="text-sm font-medium">
@@ -435,11 +433,11 @@ export default function ProjetosDashboard() {
                 <p className="text-xl md:text-2xl font-bold">
                   {anoSelecionado === 0 ? data.totais_gerais.total_projetos_geral : projetosAno}
                 </p>
-                <p className="text-xs text-green-100 mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   {anoSelecionado === 0 ? 'de todos os anos' : 'do ano selecionado'}
                 </p>
               </div>
-              <div className="p-3 rounded-lg transition-all duration-300 hover:bg-white/10 hover:scale-105 cursor-pointer">
+              <div className="flex flex-col items-center justify-center rounded-xl py-6 px-4 bg-white shadow-md border border-gray-100 hover:bg-gray-50 hover:shadow-md hover:scale-[1.02] cursor-pointer">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <DollarSignIcon size={20} />
                   <span className="text-sm font-medium">
@@ -452,13 +450,13 @@ export default function ProjetosDashboard() {
                     : valorAno.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
                   }
                 </p>
-                <p className="text-xs text-green-100 mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   {anoSelecionado === 0 ? 'de todos os anos' : 'do ano selecionado'}
                 </p>
               </div>
               <Dialog open={isProgramModalOpen} onOpenChange={setIsProgramModalOpen}>
                 <DialogTrigger asChild>
-                  <div className="p-3 rounded-lg transition-all duration-300 hover:bg-white/10 hover:scale-105 cursor-pointer">
+                  <div className="flex flex-col items-center justify-center rounded-xl py-6 px-4 bg-white shadow-md border border-gray-100 hover:bg-gray-50 hover:shadow-md hover:scale-[1.02] cursor-pointer">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <FilterIcon size={20} />
                       <span className="text-sm font-medium">Programas</span>
@@ -466,7 +464,7 @@ export default function ProjetosDashboard() {
                     <p className="text-xl md:text-2xl font-bold">
                       {programasSelecionados.length}/{data.programas.length}
                     </p>
-                    <p className="text-xs text-green-100 mt-1">clique para filtrar</p>
+                    <p className="text-xs text-gray-500 mt-1">clique para filtrar</p>
                   </div>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
@@ -523,8 +521,6 @@ export default function ProjetosDashboard() {
                 </DialogContent>
               </Dialog>
             </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Switch de Visualização */}
