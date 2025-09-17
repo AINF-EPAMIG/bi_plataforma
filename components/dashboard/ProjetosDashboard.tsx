@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CalendarIcon, DollarSignIcon, TrendingUpIcon, FilterIcon, DownloadIcon } from 'lucide-react';
 
@@ -57,13 +56,15 @@ export default function ProjetosDashboard() {
   const [data, setData] = useState<ProjetosData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filtroPrograma, setFiltroPrograma] = useState<string>('todos');
-  const [filtroAno, setFiltroAno] = useState<string>('todos');
+  const [filtroPrograma] = useState<string>('todos');
+  const [filtroAno] = useState<string>('todos');
   const [anoSelecionado, setAnoSelecionado] = useState<number>(0); // 0 representa "Todos os Anos"
   const [isYearModalOpen, setIsYearModalOpen] = useState(false);
   const [programasSelecionados, setProgramasSelecionados] = useState<number[]>([]);
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'graficos' | 'tabelas'>('graficos');
+  const [exportandoFinanceiro, setExportandoFinanceiro] = useState(false);
+  const [exportandoQuantitativo, setExportandoQuantitativo] = useState(false);
 
   // Gerar anos dinamicamente (ano atual + 4 anos)
   const anoAtual = new Date().getFullYear();
@@ -249,34 +250,85 @@ export default function ProjetosDashboard() {
     return false;
   };
 
-  // Função para exportar dados
-  const exportarDados = (tipoVisualizacao: 'quantitativo' | 'financeiro') => {
+  // Função para exportar dados via API
+  const exportarDados = async (tipoVisualizacao: 'quantitativo' | 'financeiro') => {
     if (!data) return;
     
+    // Definir estado de loading
+    if (tipoVisualizacao === 'financeiro') {
+      setExportandoFinanceiro(true);
+    } else {
+      setExportandoQuantitativo(true);
+    }
+    
     try {
-      const csvContent = [
-        ['Programa', ...anos.map(a => `${a} (${tipoVisualizacao === 'quantitativo' ? 'Qtd' : 'Valor R$'})`), 'Total'].join(','),
-        ...data.programas.map(programa => [
-          `"${programa.nome}"`,
-          ...anos.map(ano => tipoVisualizacao === 'quantitativo' 
-            ? programa.projetos_por_ano[ano] || 0
-            : (programa.valores_por_ano[ano] || 0).toFixed(2)
-          ),
-          tipoVisualizacao === 'quantitativo' ? programa.total_projetos : programa.valor_total.toFixed(2)
-        ].join(','))
-      ].join('\n');
+      // Preparar parâmetros para a API
+      const { programas: programasFiltrados } = getDadosFiltrados();
+      const programasIds = programasFiltrados.map(p => p.id.toString());
+      
+      // Determinar anos para exportação
+      let anosParaExportar: string[];
+      if (anoSelecionado === 0) {
+        // Se "Todos" está selecionado, exportar todos os anos
+        anosParaExportar = anos.map(a => a.toString());
+      } else {
+        // Se um ano específico está selecionado, exportar apenas esse ano
+        anosParaExportar = [anoSelecionado.toString()];
+      }
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const exportParams = {
+        tipo: tipoVisualizacao,
+        formato: 'xlsx' as const, // preferir Excel para largura de colunas
+        programas: programasIds,
+        anos: anosParaExportar,
+        anoSelecionado: anoSelecionado
+      };
+
+      // Fazer requisição para a API
+      const response = await fetch('/api/export/projetos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(exportParams)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro na exportação: ${response.statusText}`);
+      }
+
+      // Baixar o arquivo
+      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `projetos_${tipoVisualizacao}_${anoAtual}-${anoAtual + 4}.csv`;
+
+      // Nome do arquivo mais descritivo
+      const dataAtual = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+      const filtroAno = anoSelecionado === 0 ? 'todos-anos' : anoSelecionado.toString();
+      const filtroPrograma = programasIds.length === data.programas.length ? 'todos-programas' : `${programasIds.length}-programas`;
+
+      a.download = `projetos-${tipoVisualizacao}-${filtroAno}-${filtroPrograma}-${dataAtual}.xlsx`;
+
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
+
+      // Feedback visual (opcional - pode adicionar um toast/notification)
+      console.log(`✅ Exportação concluída: ${a.download}`);
+      
     } catch (error) {
-      console.error('Erro ao exportar:', error);
+      console.error('❌ Erro ao exportar dados:', error);
+      // Aqui você pode adicionar um toast de erro para o usuário
+      alert('Erro ao exportar dados. Tente novamente.');
+    } finally {
+      // Resetar estado de loading
+      if (tipoVisualizacao === 'financeiro') {
+        setExportandoFinanceiro(false);
+      } else {
+        setExportandoQuantitativo(false);
+      }
     }
   };
 
@@ -541,7 +593,7 @@ export default function ProjetosDashboard() {
                             ))}
                           </Pie>
                           <Tooltip 
-                            formatter={(value, name) => [value, 'Projetos']}
+                            formatter={(value) => [value, 'Projetos']}
                             labelFormatter={(label) => `Programa: ${label}`}
                             contentStyle={{ 
                               backgroundColor: 'white', 
@@ -657,7 +709,7 @@ export default function ProjetosDashboard() {
                             ))}
                           </Pie>
                           <Tooltip 
-                            formatter={(value, name) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Valor']}
+                            formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Valor']}
                             labelFormatter={(label) => `Programa: ${label}`}
                             contentStyle={{ 
                               backgroundColor: 'white', 
@@ -759,10 +811,20 @@ export default function ProjetosDashboard() {
                 </div>
                 <Button 
                   onClick={() => exportarDados('financeiro')}
-                  className="bg-[#025C3E] hover:bg-[#157A5B] flex items-center gap-2"
+                  disabled={exportandoFinanceiro}
+                  className="bg-[#025C3E] hover:bg-[#157A5B] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  <DownloadIcon size={16} />
-                  Exportar Financeiro
+                  {exportandoFinanceiro ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Exportando...
+                    </>
+                  ) : (
+                    <>
+                      <DownloadIcon size={16} />
+                      Exportar Financeiro
+                    </>
+                  )}
                 </Button>
               </div>
             </CardHeader>
@@ -902,10 +964,20 @@ export default function ProjetosDashboard() {
                 </div>
                 <Button 
                   onClick={() => exportarDados('quantitativo')}
-                  className="bg-[#157A5B] hover:bg-[#025C3E] flex items-center gap-2"
+                  disabled={exportandoQuantitativo}
+                  className="bg-[#157A5B] hover:bg-[#025C3E] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  <DownloadIcon size={16} />
-                  Exportar Quantitativo
+                  {exportandoQuantitativo ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Exportando...
+                    </>
+                  ) : (
+                    <>
+                      <DownloadIcon size={16} />
+                      Exportar Quantitativo
+                    </>
+                  )}
                 </Button>
               </div>
             </CardHeader>
