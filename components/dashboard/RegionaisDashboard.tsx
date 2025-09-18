@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import dynamic from 'next/dynamic';
-const PieChart3D = dynamic(() => import('@/components/charts/PieChart3D').then(m => m.PieChart3D), { ssr: false });
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface RegionalData {
   id: number;
@@ -15,7 +13,7 @@ interface RegionalData {
 interface FazendaData {
   id: number;
   nome_fazenda: string;
-  sigla_fazenda: string; // Adicionado para usar como label
+  sigla_fazenda: string;
   nome_regional: string;
   total: number;
 }
@@ -24,68 +22,186 @@ interface DashboardData {
   success: boolean;
   regionais: RegionalData[];
   totalGeral: number;
+  error?: string;
 }
 
 interface FazendasData {
   success: boolean;
   fazendas: FazendaData[];
   totalGeral: number;
+  error?: string;
 }
 
-// Paleta de cores vibrantes diversificada
+type FazendaChartItem = {
+  id: number;
+  sigla_fazenda: string;
+  total: number;
+};
+
 const COLORS = [
-  '#970FF2', // Roxo vibrante
-  '#0597F2', // Azul vibrante
-  '#49D907', // Verde lima
-  '#0000FF', // Azul puro
-  '#EAF205', // Amarelo vibrante
-  '#6BDDFD', // Azul claro
-  '#F24607', // Laranja vermelho
-  '#8F0054', // Magenta escuro
-  '#FF9100', // Laranja vibrante
-  '#35792E', // Verde escuro
-  '#54ED65', // Verde claro vibrante
-  '#BA1979', // Rosa magenta
-  '#68D31B', // Verde lima claro
-  '#00FFF7', // Ciano vibrante
+  '#A15CE0',
+  '#5FADE0',
+  '#7FC86E',
+  '#5F5FE0',
+  '#E0C85F',
+  '#7FCFE6',
+  '#E07A5F',
+  '#A15C8F',
+  '#E0A85F',
+  '#5F8F5F',
+  '#7FE07F',
+  '#C85FA1',
+  '#7FE05F',
+  '#5FE0E0',
 ];
+
+// Componente de tooltip customizado
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0];
+    const value = data.value;
+    const name = data.payload.nome || data.payload.sigla_fazenda;
+    const percent = ((value / data.payload.totalSum) * 100).toFixed(1);
+    
+    return (
+      <div className="bg-white border border-gray-300 rounded-lg shadow-lg p-3 max-w-xs">
+        <div className="flex items-center gap-2 mb-2">
+          <div 
+            className="w-3 h-3 rounded-full" 
+            style={{ backgroundColor: data.color }}
+          />
+          <span className="font-semibold text-gray-800">{name}</span>
+        </div>
+        <div className="text-sm text-gray-600">
+          <div>Pesquisadores: <span className="font-bold text-gray-800">{value}</span></div>
+          <div>Percentual: <span className="font-bold text-gray-800">{percent}%</span></div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function RegionaisDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [fazendasData, setFazendasData] = useState<FazendasData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Estados para controlar as fatias "puxadas"
+  const [activeRegionalIndex, setActiveRegionalIndex] = useState<number | null>(null);
+  const [activeFazendaIndex, setActiveFazendaIndex] = useState<number | null>(null);
+  const [hoveredRegionalIndex, setHoveredRegionalIndex] = useState<number | null>(null);
+  const [hoveredFazendaIndex, setHoveredFazendaIndex] = useState<number | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchData = async () => {
       try {
-        // Buscar dados das regionais
-        const regionaisResponse = await fetch('/api/dashboard/regionais');
-        const regionaisResult = await regionaisResponse.json();
-        
-        // Buscar dados das fazendas
-        const fazendasResponse = await fetch('/api/dashboard/fazendas');
-        const fazendasResult = await fazendasResponse.json();
-        
-        if (regionaisResult.success) {
-          setData(regionaisResult);
-        } else {
-          setError(regionaisResult.error || 'Erro ao carregar dados das regionais');
+        const [regionaisResponse, fazendasResponse] = await Promise.all([
+          fetch('/api/dashboard/regionais'),
+          fetch('/api/dashboard/fazendas'),
+        ]);
+
+        if (!regionaisResponse.ok) {
+          throw new Error('Falha ao carregar dados das regionais');
+        }
+        if (!fazendasResponse.ok) {
+          console.warn('Falha ao carregar dados das fazendas');
         }
 
-        if (fazendasResult.success) {
-          setFazendasData(fazendasResult);
-        } else {
-          console.warn('Erro ao carregar dados das fazendas:', fazendasResult.error);
+        const regionaisResult: DashboardData = await regionaisResponse.json();
+        const fazendasResult: FazendasData = await fazendasResponse.json().catch(() => ({
+          success: false,
+          fazendas: [],
+          totalGeral: 0,
+          error: 'Falha ao parsear dados das fazendas',
+        }));
+
+        if (!cancelled) {
+          if (regionaisResult.success) {
+            setData(regionaisResult);
+          } else {
+            setError(regionaisResult.error || 'Erro ao carregar dados das regionais');
+          }
+
+          if (fazendasResult.success) {
+            setFazendasData(fazendasResult);
+          } else {
+            console.warn('Erro ao carregar dados das fazendas:', fazendasResult.error);
+            setFazendasData({ success: false, fazendas: [], totalGeral: 0, error: fazendasResult.error });
+          }
         }
-      } catch {
-        setError('Erro de conexão com o servidor');
+      } catch (e: unknown) {
+        if (!cancelled) {
+          const message = e instanceof Error ? e.message : 'Erro de conexão com o servidor';
+          setError(message);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const regionaisChartData = useMemo(() => {
+    const filtered = data?.regionais.filter((r) => r.total > 0) ?? [];
+    const totalSum = filtered.reduce((acc, curr) => acc + curr.total, 0);
+    return filtered.map(item => ({ ...item, totalSum }));
+  }, [data]);
+
+  const fazendasChartData = useMemo(() => {
+    if (!fazendasData?.fazendas?.length) return [];
+
+    const filtered = [...fazendasData.fazendas]
+      .filter((f) => f.total > 0)
+      .sort((a, b) => b.total - a.total);
+
+    const outrosSum = filtered
+      .filter((f) => f.total < 2)
+      .reduce((acc, curr) => acc + curr.total, 0);
+
+    const agrupadas: FazendaChartItem[] = filtered
+      .filter((f) => f.total >= 2)
+      .map((f) => ({ id: f.id, sigla_fazenda: f.sigla_fazenda, total: f.total }));
+
+    if (outrosSum > 0) {
+      agrupadas.push({ id: -1, sigla_fazenda: 'Outros', total: outrosSum });
+    }
+
+    const totalSum = agrupadas.reduce((acc, curr) => acc + curr.total, 0);
+    return agrupadas.map(item => ({ ...item, totalSum }));
+  }, [fazendasData]);
+
+  // Handlers para os eventos de clique e hover
+  const handleRegionalClick = useCallback((index: number) => {
+    setActiveRegionalIndex(prev => prev === index ? null : index);
+  }, []);
+
+  const handleFazendaClick = useCallback((index: number) => {
+    setActiveFazendaIndex(prev => prev === index ? null : index);
+  }, []);
+
+  const handleRegionalMouseEnter = useCallback((index: number) => {
+    setHoveredRegionalIndex(index);
+  }, []);
+
+  const handleRegionalMouseLeave = useCallback(() => {
+    setHoveredRegionalIndex(null);
+  }, []);
+
+  const handleFazendaMouseEnter = useCallback((index: number) => {
+    setHoveredFazendaIndex(index);
+  }, []);
+
+  const handleFazendaMouseLeave = useCallback(() => {
+    setHoveredFazendaIndex(null);
   }, []);
 
   if (loading) {
@@ -93,20 +209,20 @@ export default function RegionaisDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="animate-pulse">
           <CardHeader>
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4" />
+            <div className="h-3 bg-gray-200 rounded w-1/2" />
           </CardHeader>
           <CardContent>
-            <div className="h-64 bg-gray-200 rounded"></div>
+            <div className="h-80 bg-gray-200 rounded" />
           </CardContent>
         </Card>
         <Card className="animate-pulse">
           <CardHeader>
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4" />
+            <div className="h-3 bg-gray-200 rounded w-1/2" />
           </CardHeader>
           <CardContent>
-            <div className="h-64 bg-gray-200 rounded"></div>
+            <div className="h-80 bg-gray-200 rounded" />
           </CardContent>
         </Card>
       </div>
@@ -136,31 +252,16 @@ export default function RegionaisDashboard() {
     );
   }
 
-  // Cards institucionais no topo (incluindo total de pesquisadores)
-  const cardsResumo = [
-    {
-      label: 'Unidades Regionais',
-      value: 5,
-    },
-    {
-      label: 'Institutos Tecnológicos',
-      value: 2,
-    },
-    {
-      label: 'Campos Experimentais',
-      value: 21,
-    },
-    {
-      label: 'Total de pesquisadores',
-      value: data?.totalGeral || 0,
-    }
-  ];
-
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Cards institucionais sem gradiente, sombra ou ícone - AGORA 4 CARDS */}
+      {/* Cards institucionais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-2">
-        {cardsResumo.map((card) => (
+        {[
+          { label: 'Unidades Regionais', value: 5 },
+          { label: 'Institutos Tecnológicos', value: 2 },
+          { label: 'Campos Experimentais', value: 21 },
+          { label: 'Total de pesquisadores', value: data?.totalGeral || 0 },
+        ].map((card) => (
           <div
             key={card.label}
             className="flex flex-col items-center justify-center rounded-xl py-6 px-4 bg-white shadow-md border border-gray-100"
@@ -171,152 +272,160 @@ export default function RegionaisDashboard() {
         ))}
       </div>
 
-      {/* Card ÚNICO - Proporção por Regional COM GRÁFICO E LEGENDA MINIMALISTA */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg md:text-xl flex items-center gap-2">
-            <div className="w-2 h-2 bg-[#157A5B] rounded-full"></div>
-            Total de Pesquisadores por Unidade
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col lg:flex-row gap-6 items-start">
-            {/* Gráfico de Pizza 3D */}
-            <div className="w-full lg:w-2/3">
-              <PieChart3D
-                title="Proporção por Regional (3D)"
-                data={data.regionais.map((r, i) => ({
-                  name: r.nome,
-                  value: r.total,
-                  color: COLORS[i % COLORS.length],
-                }))}
-                explodeOffset={0.55}
-              />
-            </div>
-
-            {/* Legenda minimalista */}
-            <div className="w-full lg:w-1/3 flex flex-col gap-2 mt-4 lg:mt-0">
-              {data.regionais.map((regional, index) => (
-                <div key={regional.id} className="flex items-center gap-2 text-sm">
-                  <span
-                    className="inline-block w-3 h-3 rounded-full"
-                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                  ></span>
-                  <div className="flex items-center gap-1 min-w-0">
-                    <span className="font-medium text-gray-700 truncate">{regional.nome}</span>
-                    <span className="text-gray-500 font-semibold whitespace-nowrap">({regional.total})</span>
-                  </div>
-                  <span className="ml-auto text-xs text-gray-400">
-                    {data.totalGeral > 0 ? ((regional.total / data.totalGeral) * 100).toFixed(1) : '0.0'}%
-                  </span>
-                </div>
-              ))}
-              <div className="flex items-center gap-2 border-t pt-2 mt-2 text-sm font-bold text-[#223A5E]">
-                <span>Total</span>
-                <span className="ml-auto">{data.totalGeral}</span>
-                <span className="ml-2 text-xs text-gray-400">100%</span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Card ÚNICO - Distribuição por Campo Experimental COM GRÁFICO E TABELA INTEGRADOS */}
-      {fazendasData && fazendasData.fazendas.length > 0 && (
+      {/* Gráficos lado a lado */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Pesquisadores por Unidade */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg md:text-xl flex items-center gap-2">
-              <div className="w-2 h-2 bg-[#F39200] rounded-full"></div>
-              Distribuição por Campo Experimental
-            </CardTitle>
-            <CardDescription className="text-sm">Quantidade de pesquisadores por campo experimental e totalizador detalhado</CardDescription>
+            <CardTitle className="text-lg md:text-xl">Pesquisadores por Unidade</CardTitle>
+            <p className="text-sm text-gray-500">Clique nas fatias para destacar</p>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Gráfico de Barras */}
-              <div>
-                <h4 className="font-semibold text-gray-700 mb-3">Visualização Gráfica</h4>
-                <ResponsiveContainer width="100%" height={320}>
-                  <BarChart
-                    data={fazendasData.fazendas}
-                    margin={{ top: 5, right: 10, left: 0, bottom: 40 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis 
-                      dataKey="sigla_fazenda"
-                      tick={{ fontSize: 11 }} 
-                      interval={0}
-                      angle={-30}
-                      textAnchor="end"
-                      height={60}
-                    />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip 
-                      formatter={(value) => [value, 'Pesquisadores']}
-                      contentStyle={{ 
-                        backgroundColor: 'white', 
-                        border: '2px solid #F39200',
-                        borderRadius: '8px',
-                        fontSize: '12px'
-                      }}
-                    />
-                    <Bar 
-                      dataKey="total" 
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={40}
-                    >
-                      {fazendasData.fazendas.map((entry, index) => (
-                        <Cell key={`cell-fazenda-bar-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Tabela/Legenda minimalista e compacta para 21 campos (sem coluna de cor) */}
-              <div>
-                <h4 className="font-semibold text-gray-700 mb-3">Totalizador Detalhado</h4>
-                <div className="max-h-80 overflow-y-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="py-2 px-2 text-left font-semibold">Sigla</th>
-                        <th className="py-2 px-2 text-left font-semibold">Campo Experimental</th>
-                        <th className="py-2 px-2 text-left font-semibold">Regional</th>
-                        <th className="py-2 px-2 text-right font-semibold">Qtd</th>
-                        <th className="py-2 px-2 text-right font-semibold">%</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {fazendasData.fazendas
-                        .sort((a, b) => b.total - a.total)
-                        .map((fazenda) => (
-                        <tr key={fazenda.id} className="border-b hover:bg-gray-50">
-                          <td className="py-1 px-2 font-semibold text-gray-800">{fazenda.sigla_fazenda}</td>
-                          <td className="py-1 px-2 text-gray-700 truncate max-w-[120px]">{fazenda.nome_fazenda}</td>
-                          <td className="py-1 px-2 text-gray-400">{fazenda.nome_regional}</td>
-                          <td className="py-1 px-2 text-right font-bold text-[#F39200]">{fazenda.total}</td>
-                          <td className="py-1 px-2 text-right text-gray-500">
-                            {fazendasData.totalGeral > 0 ? ((fazenda.total / fazendasData.totalGeral) * 100).toFixed(1) : '0.0'}%
-                          </td>
-                        </tr>
-                      ))}
-                      {/* Total Geral */}
-                      <tr className="bg-[#F39200] text-white font-bold">
-                        <td className="py-2 px-2">TOTAL</td>
-                        <td className="py-2 px-2">Todos os campos</td>
-                        <td className="py-2 px-2"></td>
-                        <td className="py-2 px-2 text-right">{fazendasData.totalGeral}</td>
-                        <td className="py-2 px-2 text-right">100%</td>
-                      </tr>
-                    </tbody>
-                  </table>
+            <ResponsiveContainer width="100%" height={380}>
+              <PieChart>
+                <Pie
+                  data={regionaisChartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={70}
+                  outerRadius={activeRegionalIndex !== null ? 115 : 110}
+                  paddingAngle={2}
+                  labelLine={false}
+                  label={({ percent }) => `${(((percent ?? 0) as number) * 100).toFixed(1)}%`}
+                  fill="#8884d8"
+                  dataKey="total"
+                  onClick={(_, index) => handleRegionalClick(index)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {regionaisChartData.map((_, index) => {
+                    const isActive = activeRegionalIndex === index;
+                    const isHovered = hoveredRegionalIndex === index;
+                    
+                    return (
+                      <Cell 
+                        key={`cell-regional-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                        stroke={isHovered || isActive ? '#333' : 'transparent'}
+                        strokeWidth={isHovered || isActive ? 2 : 0}
+                        style={{
+                          filter: isHovered ? 'brightness(1.15)' : isActive ? 'brightness(1.1)' : 'none',
+                          opacity: isHovered || isActive ? 1 : 0.9,
+                        }}
+                      />
+                    );
+                  })}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {regionaisChartData.map((regional, index) => (
+                <div 
+                  key={regional.id} 
+                  className={`flex items-center gap-2 text-sm cursor-pointer p-2 rounded transition-all duration-200 ${
+                    activeRegionalIndex === index ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
+                  }`}
+                  onClick={() => handleRegionalClick(index)}
+                  onMouseEnter={() => handleRegionalMouseEnter(index)}
+                  onMouseLeave={handleRegionalMouseLeave}
+                >
+                  <span
+                    className={`inline-block w-3 h-3 rounded-full transition-all duration-200 ${
+                      hoveredRegionalIndex === index || activeRegionalIndex === index ? 'w-4 h-4' : ''
+                    }`}
+                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                  />
+                  <span className={`text-gray-700 ${activeRegionalIndex === index ? 'font-semibold' : ''}`}>
+                    {regional.nome}
+                  </span>
+                  {(activeRegionalIndex === index || hoveredRegionalIndex === index) && (
+                    <span className="ml-auto text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                      {regional.total}
+                    </span>
+                  )}
                 </div>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
-      )}
+
+        {/* Pesquisadores por Campo Experimental */}
+        {fazendasChartData.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg md:text-xl">Pesquisadores por Campo Experimental</CardTitle>
+              <p className="text-sm text-gray-500">Clique nas fatias para destacar</p>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={380}>
+                <PieChart>
+                  <Pie
+                    data={fazendasChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={activeFazendaIndex !== null ? 115 : 110}
+                    paddingAngle={2}
+                    labelLine={false}
+                    label={({ percent }) => `${(((percent ?? 0) as number) * 100).toFixed(1)}%`}
+                    fill="#8884d8"
+                    dataKey="total"
+                    onClick={(_, index) => handleFazendaClick(index)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {fazendasChartData.map((_, index) => {
+                      const isActive = activeFazendaIndex === index;
+                      const isHovered = hoveredFazendaIndex === index;
+                      
+                      return (
+                        <Cell 
+                          key={`cell-fazenda-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                          stroke={isHovered || isActive ? '#333' : 'transparent'}
+                          strokeWidth={isHovered || isActive ? 2 : 0}
+                          style={{
+                            filter: isHovered ? 'brightness(1.15)' : isActive ? 'brightness(1.1)' : 'none',
+                            opacity: isHovered || isActive ? 1 : 0.9,
+                          }}
+                        />
+                      );
+                    })}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {fazendasChartData.map((fazenda, index) => (
+                  <div 
+                    key={`${fazenda.id}-${fazenda.sigla_fazenda}-${index}`} 
+                    className={`flex items-center gap-2 text-sm cursor-pointer p-2 rounded transition-all duration-200 ${
+                      activeFazendaIndex === index ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
+                    }`}
+                    onClick={() => handleFazendaClick(index)}
+                    onMouseEnter={() => handleFazendaMouseEnter(index)}
+                    onMouseLeave={handleFazendaMouseLeave}
+                  >
+                    <span
+                      className={`inline-block w-3 h-3 rounded-full transition-all duration-200 ${
+                        hoveredFazendaIndex === index || activeFazendaIndex === index ? 'w-4 h-4' : ''
+                      }`}
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                    <span className={`text-gray-700 truncate ${activeFazendaIndex === index ? 'font-semibold' : ''}`}>
+                      {fazenda.sigla_fazenda}
+                    </span>
+                    {(activeFazendaIndex === index || hoveredFazendaIndex === index) && (
+                      <span className="ml-auto text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                        {fazenda.total}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
