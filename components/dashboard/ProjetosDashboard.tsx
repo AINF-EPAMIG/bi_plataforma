@@ -386,12 +386,12 @@ export default function ProjetosDashboard() {
                   <div className="flex flex-col items-center justify-center rounded-xl py-6 px-4 bg-white shadow-md border border-gray-100 hover:bg-gray-50 hover:shadow-md hover:scale-[1.02] cursor-pointer">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <CalendarIcon size={20} />
-                      <span className="text-sm font-medium">Ano Selecionado</span>
+                      <span className="text-sm font-medium">Filtrar por Ano</span>
                     </div>
                     <p className="text-xl md:text-2xl font-bold">
                       {anoSelecionado === 0 ? 'Todos' : anoSelecionado}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">clique para alterar</p>
+                    <p className="text-xs text-gray-500 mt-1">👆 Clique para alterar</p>
                   </div>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md">
@@ -464,7 +464,7 @@ export default function ProjetosDashboard() {
                     <p className="text-xl md:text-2xl font-bold">
                       {programasSelecionados.length}/{data.programas.length}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">clique para filtrar</p>
+                    <p className="text-xs text-gray-500 mt-1">👆 Clique para alterar</p>
                   </div>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">

@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import dynamic from 'next/dynamic';
+const PieChart3D = dynamic(() => import('@/components/charts/PieChart3D').then(m => m.PieChart3D), { ssr: false });
 
 interface RegionalData {
   id: number;
@@ -174,41 +176,22 @@ export default function RegionaisDashboard() {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg md:text-xl flex items-center gap-2">
             <div className="w-2 h-2 bg-[#157A5B] rounded-full"></div>
-            Proporção por Regional
+            Total de Pesquisadores por Unidade
           </CardTitle>
-          <CardDescription className="text-sm">Percentual de distribuição</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col lg:flex-row gap-6 items-start">
-            {/* Gráfico de Pizza */}
+            {/* Gráfico de Pizza 3D */}
             <div className="w-full lg:w-2/3">
-              <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie
-                    data={data.regionais}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ percent }) => `${(percent * 100).toFixed(1)}%`}
-                    outerRadius={window.innerWidth < 640 ? 60 : 80}
-                    fill="#8884d8"
-                    dataKey="total"
-                  >
-                    {data.regionais.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value) => [value, 'Pesquisadores']}
-                    contentStyle={{ 
-                      backgroundColor: 'white', 
-                      border: '2px solid #157A5B',
-                      borderRadius: '8px',
-                      fontSize: '12px'
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <PieChart3D
+                title="Proporção por Regional (3D)"
+                data={data.regionais.map((r, i) => ({
+                  name: r.nome,
+                  value: r.total,
+                  color: COLORS[i % COLORS.length],
+                }))}
+                explodeOffset={0.55}
+              />
             </div>
 
             {/* Legenda minimalista */}
