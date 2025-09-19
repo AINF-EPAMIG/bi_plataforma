@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import React, { useEffect, useState, useCallback, useRef, memo } from 'react';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CalendarIcon, DollarSignIcon, TrendingUpIcon, FilterIcon, DownloadIcon } from 'lucide-react';
+import styles from './RegionaisDashboard.module.css';
 
 interface ProgramaData {
   id: number;
@@ -36,21 +37,119 @@ interface ProjetosData {
 type DashboardData = ProjetosData;
 
 const COLORS = [
-  '#970FF2', // Roxo vibrante
-  '#0597F2', // Azul vibrante
-  '#49D907', // Verde lima
-  '#0000FF', // Azul puro
-  '#EAF205', // Amarelo vibrante
-  '#6BDDFD', // Azul claro
-  '#F24607', // Laranja vermelho
-  '#8F0054', // Magenta escuro
-  '#FF9100', // Laranja vibrante
-  '#35792E', // Verde escuro
-  '#54ED65', // Verde claro vibrante
-  '#BA1979', // Rosa magenta
-  '#68D31B', // Verde lima claro
-  '#00FFF7', // Ciano vibrante
+  '#A15CE0',
+  '#5FADE0',
+  '#7FC86E',
+  '#5F5FE0',
+  '#E0C85F',
+  '#7FCFE6',
+  '#E07A5F',
+  '#A15C8F',
+  '#E0A85F',
+  '#5F8F5F',
+  '#7FE07F',
+  '#C85FA1',
+  '#7FE05F',
+  '#5FE0E0',
 ];
+
+// Função para renderizar labels com percentuais
+const renderLabel = (entry: { percent: number; value: number }) => {
+  return `${(entry.percent * 100).toFixed(1)}%`;
+};
+
+// Componente de InfoBox para exibir informações detalhadas - otimizado com memo
+const InfoBox = memo(({ item, isVisible, onClose, color, isAnimating, tipo }: {
+  item: { nome?: string; value: number; totalSum: number };
+  isVisible: boolean;
+  onClose: () => void;
+  color: string;
+  isAnimating: boolean;
+  tipo: 'quantitativo' | 'financeiro';
+}) => {
+  if (!isVisible || !item) return null;
+
+  const percent = ((item.value / item.totalSum) * 100).toFixed(1);
+  const valorFormatado = tipo === 'financeiro' 
+    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.value)
+    : item.value.toString();
+
+  return (
+    <div className={`${styles.infoBox} ${isAnimating ? styles.animating : ''}`}>
+      <button
+        onClick={onClose}
+        className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 transition-colors"
+        aria-label="Fechar"
+      >
+        ✕
+      </button>
+      
+      <div className="flex items-center gap-3 mb-3">
+        <div 
+          className="w-4 h-4 rounded-full flex-shrink-0" 
+          style={{ backgroundColor: color }}
+        />
+        <h3 className="font-bold text-gray-800 text-lg leading-tight">{item.nome}</h3>
+      </div>
+      
+      <div className="space-y-2">
+        <div className="flex justify-between items-center py-2 px-3 bg-blue-50 rounded">
+          <span className="text-gray-700 font-medium">
+            {tipo === 'financeiro' ? 'Valor:' : 'Projetos:'}
+          </span>
+          <span className="font-bold text-blue-600 text-xl">{valorFormatado}</span>
+        </div>
+        
+        <div className="flex justify-between items-center py-2 px-3 bg-green-50 rounded">
+          <span className="text-gray-700 font-medium">Percentual:</span>
+          <span className="font-bold text-green-600 text-xl">{percent}%</span>
+        </div>
+        
+        <div className="mt-3 pt-3 border-t border-gray-200">
+          <span className="text-sm text-gray-500">Programa de Pesquisa</span>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+InfoBox.displayName = 'InfoBox';
+
+// Componente de tooltip customizado - otimizado com memo
+const CustomTooltip = memo(({ active, payload, tipo }: { 
+  active?: boolean; 
+  payload?: Array<{ value: number; color: string; payload: { name?: string; totalSum: number } }>; 
+  tipo: 'quantitativo' | 'financeiro';
+}) => {
+  if (active && payload && payload.length) {
+    const data = payload[0];
+    const value = data.value;
+    const name = data.payload.name;
+    const percent = ((value / data.payload.totalSum) * 100).toFixed(1);
+    const valorFormatado = tipo === 'financeiro' 
+      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+      : value.toString();
+    
+    return (
+      <div className="bg-white border border-gray-300 rounded-lg shadow-lg p-3 max-w-xs">
+        <div className="flex items-center gap-2 mb-2">
+          <div 
+            className="w-3 h-3 rounded-full" 
+            style={{ backgroundColor: data.color }}
+          />
+          <span className="font-semibold text-gray-800">{name}</span>
+        </div>
+        <div className="text-sm text-gray-600">
+          <div>{tipo === 'financeiro' ? 'Valor:' : 'Projetos:'} <span className="font-bold text-gray-800">{valorFormatado}</span></div>
+          <div>Percentual: <span className="font-bold text-gray-800">{percent}%</span></div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+});
+
+CustomTooltip.displayName = 'CustomTooltip';
 
 export default function ProjetosDashboard() {
   const [data, setData] = useState<ProjetosData | null>(null);
@@ -65,6 +164,22 @@ export default function ProjetosDashboard() {
   const [viewMode, setViewMode] = useState<'graficos' | 'tabelas'>('graficos');
   const [exportandoFinanceiro, setExportandoFinanceiro] = useState(false);
   const [exportandoQuantitativo, setExportandoQuantitativo] = useState(false);
+
+  // Estados para controlar as fatias "puxadas" e interatividade dos gráficos
+  const [activeQuantitativoIndex, setActiveQuantitativoIndex] = useState<number | null>(null);
+  const [activeFinanceiroIndex, setActiveFinanceiroIndex] = useState<number | null>(null);
+  const [hoveredQuantitativoIndex, setHoveredQuantitativoIndex] = useState<number | null>(null);
+  const [hoveredFinanceiroIndex, setHoveredFinanceiroIndex] = useState<number | null>(null);
+  
+  // Estados para controlar as caixinhas de informações
+  const [showQuantitativoInfo, setShowQuantitativoInfo] = useState<number | null>(null);
+  const [showFinanceiroInfo, setShowFinanceiroInfo] = useState<number | null>(null);
+  const [animatingQuantitativo, setAnimatingQuantitativo] = useState<number | null>(null);
+  const [animatingFinanceiro, setAnimatingFinanceiro] = useState<number | null>(null);
+  
+  // Refs para timeouts (não causam re-renders)
+  const animationTimeoutsRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
+  const hoverTimeoutsRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
 
   // Gerar anos dinamicamente (ano atual + 4 anos)
   const anoAtual = new Date().getFullYear();
@@ -95,6 +210,14 @@ export default function ProjetosDashboard() {
     };
 
     fetchData();
+
+    // Cleanup de todos os timeouts
+    return () => {
+      const animationTimeouts = animationTimeoutsRef.current;
+      const hoverTimeouts = hoverTimeoutsRef.current;
+      Object.values(animationTimeouts).forEach(timeout => clearTimeout(timeout));
+      Object.values(hoverTimeouts).forEach(timeout => clearTimeout(timeout));
+    };
   }, []);
 
   // Função para calcular dados do ano selecionado
@@ -234,7 +357,11 @@ export default function ProjetosDashboard() {
       };
     }).filter(item => item.value > 0); // Filtrar apenas valores maiores que 0
     
-    return dadosPizza;
+    // Calcular total para percentuais
+    const totalSum = dadosPizza.reduce((sum, item) => sum + item.value, 0);
+    
+    // Adicionar totalSum a cada item para cálculos de percentual
+    return dadosPizza.map(item => ({ ...item, totalSum }));
   };
 
   // Função para verificar se deve mostrar gráfico de pizza
@@ -249,6 +376,105 @@ export default function ProjetosDashboard() {
     }
     return false;
   };
+
+  // Handlers para os eventos de clique e hover - gráfico quantitativo
+  const handleQuantitativoClick = useCallback((index: number) => {
+    // Limpa timeout anterior se existir
+    if (animationTimeoutsRef.current.quantitativo) {
+      clearTimeout(animationTimeoutsRef.current.quantitativo);
+    }
+    
+    // Animação de clique
+    setAnimatingQuantitativo(index);
+    const timeout = setTimeout(() => setAnimatingQuantitativo(null), 300);
+    animationTimeoutsRef.current.quantitativo = timeout;
+    
+    // Controle da fatia ativa
+    setActiveQuantitativoIndex(prev => prev === index ? null : index);
+    
+    // Controle da caixinha de informações
+    setShowQuantitativoInfo(prev => {
+      if (prev === index) {
+        return null; // Fecha se já estava aberta
+      } else {
+        return index; // Abre na nova posição
+      }
+    });
+  }, []);
+
+  const handleQuantitativoMouseEnter = useCallback((index: number) => {
+    // Limpa timeout anterior se existir
+    if (hoverTimeoutsRef.current.quantitativoEnter) {
+      clearTimeout(hoverTimeoutsRef.current.quantitativoEnter);
+    }
+    
+    // Debounce para hover
+    const timeout = setTimeout(() => {
+      setHoveredQuantitativoIndex(index);
+    }, 50);
+    hoverTimeoutsRef.current.quantitativoEnter = timeout;
+  }, []);
+
+  const handleQuantitativoMouseLeave = useCallback(() => {
+    // Limpa timeout anterior se existir
+    if (hoverTimeoutsRef.current.quantitativoLeave) {
+      clearTimeout(hoverTimeoutsRef.current.quantitativoLeave);
+    }
+    
+    const timeout = setTimeout(() => {
+      setHoveredQuantitativoIndex(null);
+    }, 100);
+    hoverTimeoutsRef.current.quantitativoLeave = timeout;
+  }, []);
+
+  // Handlers para os eventos de clique e hover - gráfico financeiro
+  const handleFinanceiroClick = useCallback((index: number) => {
+    // Limpa timeout anterior se existir
+    if (animationTimeoutsRef.current.financeiro) {
+      clearTimeout(animationTimeoutsRef.current.financeiro);
+    }
+    
+    // Animação de clique
+    setAnimatingFinanceiro(index);
+    const timeout = setTimeout(() => setAnimatingFinanceiro(null), 300);
+    animationTimeoutsRef.current.financeiro = timeout;
+    
+    // Controle da fatia ativa
+    setActiveFinanceiroIndex(prev => prev === index ? null : index);
+    
+    // Controle da caixinha de informações
+    setShowFinanceiroInfo(prev => {
+      if (prev === index) {
+        return null; // Fecha se já estava aberta
+      } else {
+        return index; // Abre na nova posição
+      }
+    });
+  }, []);
+
+  const handleFinanceiroMouseEnter = useCallback((index: number) => {
+    // Limpa timeout anterior se existir
+    if (hoverTimeoutsRef.current.financeiroEnter) {
+      clearTimeout(hoverTimeoutsRef.current.financeiroEnter);
+    }
+    
+    const timeout = setTimeout(() => {
+      setHoveredFinanceiroIndex(index);
+    }, 50);
+    hoverTimeoutsRef.current.financeiroEnter = timeout;
+  }, []);
+
+  const handleFinanceiroMouseLeave = useCallback(() => {
+    // Limpa timeout anterior se existir
+    if (hoverTimeoutsRef.current.financeiroLeave) {
+      clearTimeout(hoverTimeoutsRef.current.financeiroLeave);
+    }
+    
+    const timeout = setTimeout(() => {
+      setHoveredFinanceiroIndex(null);
+    }, 100);
+    hoverTimeoutsRef.current.financeiroLeave = timeout;
+  }, []);
 
   // Função para exportar dados via API
   const exportarDados = async (tipoVisualizacao: 'quantitativo' | 'financeiro') => {
@@ -553,238 +779,192 @@ export default function ProjetosDashboard() {
       {viewMode === 'graficos' ? (
         /* Gráficos */
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
-          {/* Gráfico de Barras/Pizza - Projetos por Ano */}
-          <Card className="hover:shadow-lg transition-shadow duration-300">
+          {/* Gráfico de Projetos por Programa */}
+          <Card className={`hover:shadow-lg transition-shadow duration-300 ${styles.cardContainer}`}>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg md:text-xl flex items-center gap-2">
-                <div className="w-2 h-2 bg-[#228B77] rounded-full"></div>
+              <CardTitle className="text-lg md:text-xl">
                 Projetos por Programa - {anoSelecionado === 0 ? 'Todos os Anos' : anoSelecionado}
               </CardTitle>
-              <CardDescription className="text-sm">
-                Quantidade de projetos por programa {anoSelecionado === 0 ? 'em todos os anos' : `no ano ${anoSelecionado}`}
-              </CardDescription>
+              <p className="text-sm text-gray-500">Clique nas fatias para destacar</p>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-col lg:flex-row items-center justify-center gap-6">
-                {deveExibirGraficoPizza() ? (
-                  <>
-                    {/* Gráfico de Pizza */}
-                    <div className="flex-shrink-0">
-                      <ResponsiveContainer width={300} height={300}>
-                        <PieChart>
-                          <Pie
-                            data={prepararDadosPizza('quantitativo')}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={false}
-                            outerRadius={120}
-                            fill="#8884d8"
-                            dataKey="value"
-                            stroke="#fff"
-                            strokeWidth={2}
-                          >
-                            {prepararDadosPizza('quantitativo').map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip 
-                            formatter={(value) => [value, 'Projetos']}
-                            labelFormatter={(label) => `Programa: ${label}`}
-                            contentStyle={{ 
-                              backgroundColor: 'white', 
-                              border: '2px solid #228B77',
-                              borderRadius: '8px',
-                              fontSize: '14px',
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                            }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-
-                    {/* Legenda Personalizada */}
-                    <div className="flex flex-col gap-3 min-w-0 flex-1">
-                      <h4 className="font-semibold text-gray-700 mb-2">Distribuição por Programa</h4>
-                      {(() => {
-                        const dadosPizza = prepararDadosPizza('quantitativo');
-                        const total = dadosPizza.reduce((sum, item) => sum + item.value, 0);
-                        
-                        return dadosPizza.map((entry, index) => {
-                          const percentage = total > 0 ? (entry.value / total * 100) : 0;
-                          return (
-                            <div key={index} className="flex items-center justify-between gap-4 p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                              <div className="flex items-center gap-3 min-w-0 flex-1">
-                                <div 
-                                  className="w-4 h-4 rounded-full flex-shrink-0" 
-                                  style={{ backgroundColor: entry.color }}
-                                ></div>
-                                <span className="text-sm text-gray-700 truncate">{entry.name}</span>
-                              </div>
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                <span className="text-sm font-semibold text-gray-900">{entry.value}</span>
-                                <span className="text-sm text-gray-500 min-w-[45px] text-right">
-                                  {percentage.toFixed(1)}%
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        });
-                      })()}
-                      <div className="border-t pt-2 mt-2">
-                        <div className="flex justify-between items-center font-semibold text-gray-800">
-                          <span>Total</span>
-                          <span>{prepararDadosPizza('quantitativo').reduce((sum, item) => sum + item.value, 0)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <ResponsiveContainer width="100%" height={350}>
-                    <BarChart data={prepararDadosGraficos('quantitativo')} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="ano" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip 
-                        formatter={(value, name) => [value, name]}
-                        contentStyle={{ 
-                          backgroundColor: 'white', 
-                          border: '2px solid #228B77',
-                          borderRadius: '8px',
-                          fontSize: '12px'
-                        }}
-                      />
-                      {programas.map((programa, index) => (
-                        <Bar 
-                          key={programa.id}
-                          dataKey={programa.nome} 
-                          fill={COLORS[index % COLORS.length]} 
-                          radius={[2, 2, 0, 0]}
+            <CardContent className="relative">
+              {/* Caixinha de informações para gráfico quantitativo */}
+              {showQuantitativoInfo !== null && (() => {
+                const dadosPizza = prepararDadosPizza('quantitativo');
+                const item = dadosPizza[showQuantitativoInfo];
+                return item && (
+                  <InfoBox
+                    item={{ nome: item.name, value: item.value, totalSum: item.totalSum }}
+                    isVisible={showQuantitativoInfo !== null}
+                    onClose={() => setShowQuantitativoInfo(null)}
+                    color={COLORS[showQuantitativoInfo % COLORS.length]}
+                    isAnimating={animatingQuantitativo === showQuantitativoInfo}
+                    tipo="quantitativo"
+                  />
+                );
+              })()}
+              
+              <ResponsiveContainer width="100%" height={380} className={styles.chartContainer}>
+                <PieChart>
+                  <Pie
+                    data={prepararDadosPizza('quantitativo')}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={110}
+                    paddingAngle={2}
+                    labelLine={false}
+                    label={renderLabel}
+                    fill="#8884d8"
+                    dataKey="value"
+                    onClick={(event: unknown, index: number) => handleQuantitativoClick(index)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {prepararDadosPizza('quantitativo').map((_, index) => {
+                      const isActive = activeQuantitativoIndex === index;
+                      const isHovered = hoveredQuantitativoIndex === index;
+                      const isAnimating = animatingQuantitativo === index;
+                      
+                      return (
+                        <Cell 
+                          key={`cell-quantitativo-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                          stroke={isHovered || isActive ? '#333' : 'transparent'}
+                          strokeWidth={isHovered || isActive ? 3 : 0}
+                          className={`pieSlice ${styles.pieSlice}`}
+                          style={{
+                            filter: isHovered ? 'brightness(1.2)' : isActive ? 'brightness(1.15)' : isAnimating ? 'brightness(1.3)' : 'none',
+                            opacity: isHovered || isActive ? 1 : 0.9,
+                          }}
                         />
-                      ))}
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
+                      );
+                    })}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip tipo="quantitativo" />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {prepararDadosPizza('quantitativo').map((programa, index) => (
+                  <div 
+                    key={`${programa.name}-${index}`} 
+                    className={`flex items-center gap-2 text-sm cursor-pointer p-2 rounded transition-all duration-200 ${
+                      activeQuantitativoIndex === index ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
+                    }`}
+                    onClick={() => handleQuantitativoClick(index)}
+                    onMouseEnter={() => handleQuantitativoMouseEnter(index)}
+                    onMouseLeave={handleQuantitativoMouseLeave}
+                  >
+                    <span
+                      className={`inline-block w-3 h-3 rounded-full transition-all duration-200 ${
+                        hoveredQuantitativoIndex === index || activeQuantitativoIndex === index ? 'w-4 h-4' : ''
+                      }`}
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                    <span className={`text-gray-700 truncate ${activeQuantitativoIndex === index ? 'font-semibold' : ''}`}>
+                      {programa.name}
+                    </span>
+                    {(activeQuantitativoIndex === index || hoveredQuantitativoIndex === index) && (
+                      <span className="ml-auto text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                        {programa.value}
+                      </span>
+                    )}
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
 
-          {/* Gráfico de Barras/Pizza - Dados Financeiros */}
-          <Card className="hover:shadow-lg transition-shadow duration-300">
+          {/* Gráfico de Dados Financeiros */}
+          <Card className={`hover:shadow-lg transition-shadow duration-300 ${styles.cardContainer}`}>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg md:text-xl flex items-center gap-2">
-                <div className="w-2 h-2 bg-[#2F9C93] rounded-full"></div>
+              <CardTitle className="text-lg md:text-xl">
                 Dados Financeiros - {anoSelecionado === 0 ? 'Todos os Anos' : anoSelecionado}
               </CardTitle>
-              <CardDescription className="text-sm">
-                Valores financeiros por programa {anoSelecionado === 0 ? 'em todos os anos' : `no ano ${anoSelecionado}`}
-              </CardDescription>
+              <p className="text-sm text-gray-500">Clique nas fatias para destacar</p>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-col lg:flex-row items-center justify-center gap-6">
-                {deveExibirGraficoPizza() ? (
-                  <>
-                    {/* Gráfico de Pizza */}
-                    <div className="flex-shrink-0">
-                      <ResponsiveContainer width={300} height={300}>
-                        <PieChart>
-                          <Pie
-                            data={prepararDadosPizza('financeiro')}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={false}
-                            outerRadius={120}
-                            fill="#8884d8"
-                            dataKey="value"
-                            stroke="#fff"
-                            strokeWidth={2}
-                          >
-                            {prepararDadosPizza('financeiro').map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip 
-                            formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Valor']}
-                            labelFormatter={(label) => `Programa: ${label}`}
-                            contentStyle={{ 
-                              backgroundColor: 'white', 
-                              border: '2px solid #2F9C93',
-                              borderRadius: '8px',
-                              fontSize: '14px',
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                            }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-
-                    {/* Legenda Personalizada */}
-                    <div className="flex flex-col gap-3 min-w-0 flex-1">
-                      <h4 className="font-semibold text-gray-700 mb-2">Distribuição Financeira</h4>
-                      {(() => {
-                        const dadosPizza = prepararDadosPizza('financeiro');
-                        const total = dadosPizza.reduce((sum, item) => sum + item.value, 0);
-                        
-                        return dadosPizza.map((entry, index) => {
-                          const percentage = total > 0 ? (entry.value / total * 100) : 0;
-                          return (
-                            <div key={index} className="flex items-center justify-between gap-4 p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                              <div className="flex items-center gap-3 min-w-0 flex-1">
-                                <div 
-                                  className="w-4 h-4 rounded-full flex-shrink-0" 
-                                  style={{ backgroundColor: entry.color }}
-                                ></div>
-                                <span className="text-sm text-gray-700 truncate">{entry.name}</span>
-                              </div>
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                <span className="text-sm font-semibold text-gray-900">
-                                  R$ {Number(entry.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                </span>
-                                <span className="text-sm text-gray-500 min-w-[45px] text-right">
-                                  {percentage.toFixed(1)}%
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        });
-                      })()}
-                      <div className="border-t pt-2 mt-2">
-                        <div className="flex justify-between items-center font-semibold text-gray-800">
-                          <span>Total</span>
-                          <span>
-                            R$ {prepararDadosPizza('financeiro').reduce((sum, item) => sum + item.value, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <ResponsiveContainer width="100%" height={350}>
-                    <BarChart data={prepararDadosGraficos('financeiro')} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="ano" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip 
-                        formatter={(value, name) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, name]}
-                        contentStyle={{ 
-                          backgroundColor: 'white', 
-                          border: '2px solid #2F9C93',
-                          borderRadius: '8px',
-                          fontSize: '12px'
-                        }}
-                      />
-                      {programas.map((programa, index) => (
-                        <Bar 
-                          key={programa.id}
-                          dataKey={programa.nome} 
+            <CardContent className="relative">
+              {/* Caixinha de informações para gráfico financeiro */}
+              {showFinanceiroInfo !== null && (() => {
+                const dadosPizza = prepararDadosPizza('financeiro');
+                const item = dadosPizza[showFinanceiroInfo];
+                return item && (
+                  <InfoBox
+                    item={{ nome: item.name, value: item.value, totalSum: item.totalSum }}
+                    isVisible={showFinanceiroInfo !== null}
+                    onClose={() => setShowFinanceiroInfo(null)}
+                    color={COLORS[showFinanceiroInfo % COLORS.length]}
+                    isAnimating={animatingFinanceiro === showFinanceiroInfo}
+                    tipo="financeiro"
+                  />
+                );
+              })()}
+              
+              <ResponsiveContainer width="100%" height={380} className={styles.chartContainer}>
+                <PieChart>
+                  <Pie
+                    data={prepararDadosPizza('financeiro')}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={110}
+                    paddingAngle={2}
+                    labelLine={false}
+                    label={renderLabel}
+                    fill="#8884d8"
+                    dataKey="value"
+                    onClick={(event: unknown, index: number) => handleFinanceiroClick(index)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {prepararDadosPizza('financeiro').map((_, index) => {
+                      const isActive = activeFinanceiroIndex === index;
+                      const isHovered = hoveredFinanceiroIndex === index;
+                      const isAnimating = animatingFinanceiro === index;
+                      
+                      return (
+                        <Cell 
+                          key={`cell-financeiro-${index}`}
                           fill={COLORS[index % COLORS.length]}
-                          radius={[2, 2, 0, 0]}
+                          stroke={isHovered || isActive ? '#333' : 'transparent'}
+                          strokeWidth={isHovered || isActive ? 3 : 0}
+                          className={`pieSlice ${styles.pieSlice}`}
+                          style={{
+                            filter: isHovered ? 'brightness(1.2)' : isActive ? 'brightness(1.15)' : isAnimating ? 'brightness(1.3)' : 'none',
+                            opacity: isHovered || isActive ? 1 : 0.9,
+                          }}
                         />
-                      ))}
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
+                      );
+                    })}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip tipo="financeiro" />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {prepararDadosPizza('financeiro').map((programa, index) => (
+                  <div 
+                    key={`${programa.name}-${index}`} 
+                    className={`flex items-center gap-2 text-sm cursor-pointer p-2 rounded transition-all duration-200 ${
+                      activeFinanceiroIndex === index ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
+                    }`}
+                    onClick={() => handleFinanceiroClick(index)}
+                    onMouseEnter={() => handleFinanceiroMouseEnter(index)}
+                    onMouseLeave={handleFinanceiroMouseLeave}
+                  >
+                    <span
+                      className={`inline-block w-3 h-3 rounded-full transition-all duration-200 ${
+                        hoveredFinanceiroIndex === index || activeFinanceiroIndex === index ? 'w-4 h-4' : ''
+                      }`}
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                    <span className={`text-gray-700 truncate ${activeFinanceiroIndex === index ? 'font-semibold' : ''}`}>
+                      {programa.name}
+                    </span>
+                    {(activeFinanceiroIndex === index || hoveredFinanceiroIndex === index) && (
+                      <span className="ml-auto text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(programa.value)}
+                      </span>
+                    )}
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
