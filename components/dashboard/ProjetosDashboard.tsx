@@ -186,6 +186,10 @@ export default function ProjetosDashboard() {
   const anos = Array.from({ length: 5 }, (_, i) => anoAtual + i);
 
   useEffect(() => {
+    // Capturar os valores dos refs no início do effect para uso no cleanup
+    const animationTimeouts = animationTimeoutsRef.current;
+    const hoverTimeouts = hoverTimeoutsRef.current;
+
     const fetchData = async () => {
       try {
         const response = await fetch('/api/dashboard/projetos');
@@ -213,8 +217,6 @@ export default function ProjetosDashboard() {
 
     // Cleanup de todos os timeouts
     return () => {
-      const animationTimeouts = animationTimeoutsRef.current;
-      const hoverTimeouts = hoverTimeoutsRef.current;
       Object.values(animationTimeouts).forEach(timeout => clearTimeout(timeout));
       Object.values(hoverTimeouts).forEach(timeout => clearTimeout(timeout));
     };
@@ -296,38 +298,6 @@ export default function ProjetosDashboard() {
     };
   };
 
-  // Função para preparar dados para gráficos
-  const prepararDadosGraficos = (tipoVisualizacao: 'quantitativo' | 'financeiro') => {
-    const { programas } = getDadosFiltrados();
-    
-    // Se filtro de ano está ativo, usar apenas esse ano
-    // Caso contrário, usar o ano selecionado no card de resumo
-    let anosParaGrafico: number[];
-    if (filtroAno !== 'todos') {
-      anosParaGrafico = [parseInt(filtroAno)];
-    } else if (anoSelecionado === 0) {
-      // Se "Todos" foi selecionado, mostrar todos os anos
-      anosParaGrafico = anos;
-    } else {
-      // Mostrar apenas o ano selecionado
-      anosParaGrafico = [anoSelecionado];
-    }
-    
-    return anosParaGrafico.map(ano => {
-      const anoData: Record<string, string | number> = { ano: ano.toString() };
-      
-      programas.forEach(programa => {
-        const valor = tipoVisualizacao === 'quantitativo' 
-          ? programa.projetos_por_ano[ano] || 0
-          : programa.valores_por_ano[ano] || 0;
-        
-        anoData[programa.nome] = valor;
-      });
-      
-      return anoData;
-    });
-  };
-
   // Função para preparar dados para gráfico de pizza
   const prepararDadosPizza = (tipoVisualizacao: 'quantitativo' | 'financeiro') => {
     const { programas } = getDadosFiltrados();
@@ -362,19 +332,6 @@ export default function ProjetosDashboard() {
     
     // Adicionar totalSum a cada item para cálculos de percentual
     return dadosPizza.map(item => ({ ...item, totalSum }));
-  };
-
-  // Função para verificar se deve mostrar gráfico de pizza
-  const deveExibirGraficoPizza = () => {
-    // Mostrar pizza se um ano específico foi selecionado no filtro
-    if (filtroAno !== 'todos') {
-      return true;
-    }
-    // OU se um ano específico foi selecionado no card de resumo (diferente de "Todos")
-    if (anoSelecionado !== 0) {
-      return true;
-    }
-    return false;
   };
 
   // Handlers para os eventos de clique e hover - gráfico quantitativo
