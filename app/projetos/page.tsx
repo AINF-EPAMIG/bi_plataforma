@@ -13,9 +13,9 @@ export default function ProjetosPage() {
           <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-center text-[#157A5B] tracking-tight rounded-lg py-3 px-4 sm:py-4 sm:px-6 w-full max-w-4xl mx-auto ">
             Projetos Executados
           </h2>
-          <p className="mt-1 text-sm sm:text-base text-center text-gray-600 max-w-3xl mx-auto">
+          {/* <p className="mt-1 text-sm sm:text-base text-center text-gray-600 max-w-3xl mx-auto">
             Clique nas caixas e filtre os dados conforme sua necessidade.
-          </p>
+          </p> */}
         </div>
 
         {/* Dashboard de projetos */}
