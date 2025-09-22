@@ -40,6 +40,20 @@ type FazendaChartItem = {
   total: number;
 };
 
+// Institutos Tecnológicos
+interface InstitutoData {
+  id: number;
+  nome: string; // Nome do instituto tecnológico
+  total: number; // Total de pesquisadores
+}
+
+interface InstitutosData {
+  success: boolean;
+  institutos: InstitutoData[];
+  totalGeral: number;
+  error?: string;
+}
+
 const COLORS = [
   '#A15CE0',
   '#5FADE0',
@@ -97,12 +111,14 @@ CustomTooltip.displayName = 'CustomTooltip';
 export default function RegionaisDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [fazendasData, setFazendasData] = useState<FazendasData | null>(null);
+  const [institutosData, setInstitutosData] = useState<InstitutosData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   // Estados para controlar apenas o hover (mantido para efeito visual suave)
   const [hoveredRegionalIndex, setHoveredRegionalIndex] = useState<number | null>(null);
   const [hoveredFazendaIndex, setHoveredFazendaIndex] = useState<number | null>(null);
+  const [hoveredInstitutoIndex, setHoveredInstitutoIndex] = useState<number | null>(null);
   
   // Refs para timeouts de hover
   const hoverTimeoutsRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
@@ -112,13 +128,17 @@ export default function RegionaisDashboard() {
 
     const fetchData = async () => {
       try {
-        const [regionaisResponse, fazendasResponse] = await Promise.all([
+        const [regionaisResponse, fazendasResponse, institutosResponse] = await Promise.all([
           fetch('/api/dashboard/regionais'),
           fetch('/api/dashboard/fazendas'),
+          fetch('/api/dashboard/institutos').catch(() => new Response(null, { status: 500 }))
         ]);
 
         if (!regionaisResponse.ok) {
           throw new Error('Falha ao carregar dados das regionais');
+        }
+        if (!institutosResponse.ok) {
+          console.warn('Falha ao carregar dados dos institutos');
         }
         if (!fazendasResponse.ok) {
           console.warn('Falha ao carregar dados das fazendas');
@@ -130,6 +150,12 @@ export default function RegionaisDashboard() {
           fazendas: [],
           totalGeral: 0,
           error: 'Falha ao parsear dados das fazendas',
+        }));
+        const institutosResult: InstitutosData = await institutosResponse.json().catch(() => ({
+          success: false,
+          institutos: [],
+          totalGeral: 0,
+          error: 'Falha ao parsear dados dos institutos',
         }));
 
         if (!cancelled) {
@@ -145,6 +171,13 @@ export default function RegionaisDashboard() {
             console.warn('Erro ao carregar dados das fazendas:', fazendasResult.error);
             setFazendasData({ success: false, fazendas: [], totalGeral: 0, error: fazendasResult.error });
           }
+
+          if (institutosResult.success) {
+            setInstitutosData(institutosResult);
+          } else {
+            console.warn('Erro ao carregar dados dos institutos:', institutosResult.error);
+            setInstitutosData({ success: false, institutos: [], totalGeral: 0, error: institutosResult.error });
+          }
         }
       } catch (e: unknown) {
         if (!cancelled) {
@@ -158,11 +191,13 @@ export default function RegionaisDashboard() {
 
     fetchData();
 
+    // Captura o valor atual do ref no momento da execução do efeito
+    const hoverTimeoutsOnMount = hoverTimeoutsRef.current;
+
     return () => {
       cancelled = true;
       // Cleanup de timeouts de hover
-      const hoverTimeouts = hoverTimeoutsRef.current;
-      Object.values(hoverTimeouts).forEach(timeout => clearTimeout(timeout));
+      Object.values(hoverTimeoutsOnMount).forEach(timeout => clearTimeout(timeout));
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -192,6 +227,28 @@ export default function RegionaisDashboard() {
     const totalSum = agrupadas.reduce((acc, curr) => acc + curr.total, 0);
     return agrupadas.map(item => ({ ...item, totalSum }));
   }, [fazendasData?.fazendas]);
+
+  // Dados para o gráfico de Institutos Tecnológicos
+  const institutosChartData = useMemo(() => {
+    if (!institutosData?.institutos?.length) return [];
+    const filtered = institutosData.institutos.filter((i) => i.total > 0).sort((a, b) => b.total - a.total);
+    if (!filtered.length) return [];
+    const totalSum = filtered.reduce((acc, cur) => acc + cur.total, 0);
+    
+    // Mapear cores específicas para cada instituto baseado na legenda
+    const getColorForInstituto = (nome: string) => {
+      if (nome === 'ILCT') return '#E0C85F'; // Amarelo (posição 4 no COLORS)
+      if (nome === 'ITAP') return '#5F5FE0'; // Azul (posição 6 no COLORS)
+      return COLORS[0]; // Fallback
+    };
+    
+    return filtered.map((i) => ({ 
+      name: i.nome, 
+      total: i.total, 
+      totalSum,
+      color: getColorForInstituto(i.nome)
+    }));
+  }, [institutosData?.institutos]);
 
   // Handlers apenas para os eventos de hover (efeito visual suave)
   const handleRegionalMouseEnter = useCallback((index: number) => {
@@ -243,6 +300,26 @@ export default function RegionaisDashboard() {
     hoverTimeoutsRef.current.fazendaLeave = timeout;
   }, []);
 
+  const handleInstitutoMouseEnter = useCallback((index: number) => {
+    if (hoverTimeoutsRef.current.institutoEnter) {
+      clearTimeout(hoverTimeoutsRef.current.institutoEnter);
+    }
+    const timeout = setTimeout(() => {
+      setHoveredInstitutoIndex(index);
+    }, 50);
+    hoverTimeoutsRef.current.institutoEnter = timeout;
+  }, []);
+
+  const handleInstitutoMouseLeave = useCallback(() => {
+    if (hoverTimeoutsRef.current.institutoLeave) {
+      clearTimeout(hoverTimeoutsRef.current.institutoLeave);
+    }
+    const timeout = setTimeout(() => {
+      setHoveredInstitutoIndex(null);
+    }, 100);
+    hoverTimeoutsRef.current.institutoLeave = timeout;
+  }, []);
+
   // Memoização dos cards institucionais
   const institutionalCards = useMemo(() => [
     { label: 'Unidades Regionais', value: 5 },
@@ -254,6 +331,20 @@ export default function RegionaisDashboard() {
   // Label de porcentagem apenas para o gráfico de "Pesquisadores por Unidade"
   const renderPercentLabel = useCallback(({ percent }: { percent?: number }) => {
     return `${((percent ?? 0) * 100).toFixed(1)}%`;
+  }, []);
+
+  // Nome completo dos institutos seguido da sigla
+  const getInstitutoDisplayName = useCallback((siglaOuNome: string) => {
+    if (siglaOuNome === 'ILCT') return 'Instituto de Laticínios Cândido Tostes (ILCT)';
+    if (siglaOuNome === 'ITAP') return 'Instituto Tecnológico de Agropecuária de Pitangui (ITAP)';
+    // Caso venha o nome completo já, mantém e adiciona sigla se reconhecida
+    if (siglaOuNome.toUpperCase().includes('LATICÍNIOS') && !siglaOuNome.includes('(ILCT)')) {
+      return `${siglaOuNome} (ILCT)`;
+    }
+    if (siglaOuNome.toUpperCase().includes('AGROPECUÁRIA') && !siglaOuNome.includes('(ITAP)')) {
+      return `${siglaOuNome} (ITAP)`;
+    }
+    return siglaOuNome;
   }, []);
 
   if (loading) {
@@ -319,8 +410,10 @@ export default function RegionaisDashboard() {
         ))}
       </div>
 
-      {/* Gráficos lado a lado */}
-  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+  {/* Gráficos lado a lado */}
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
+        {/* Coluna esquerda: Unidades + Institutos empilhados */}
+        <div className="flex flex-col gap-3 lg:row-span-2">
         {/* Pesquisadores por Unidade */}
         <Card className={styles.cardContainer}>
           <CardHeader className="pb-1">
@@ -389,9 +482,88 @@ export default function RegionaisDashboard() {
           </CardContent>
         </Card>
 
+        {/* Pesquisadores por Instituto Tecnológico (legenda estilo barras) */}
+          <Card className={`${styles.cardContainer} shadow-sm border-gray-100 bg-gradient-to-br from-white to-gray-50 h-full flex-1`}>
+            <CardHeader className="pb-2 border-b border-gray-100">
+              <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center gap-2">
+                Pesquisadores por Instituto Tecnológico
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="relative py-3 px-4">
+              {institutosChartData.length === 0 ? (
+                <div className="text-center text-sm text-gray-500 py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                  <div className="text-gray-400 mb-2">📊</div>
+                  <div>Sem dados para exibir</div>
+                </div>
+              ) : (
+                <div className="mt-1 space-y-1.5 h-full">
+                  <div className="grid grid-cols-1 gap-8">
+                    {institutosChartData
+                      .sort((a, b) => b.total - a.total)
+                      .map((inst, index) => {
+                        const totalSum = inst.totalSum || institutosChartData.reduce((acc, i) => acc + i.total, 0);
+                        const percent = totalSum > 0 ? inst.total / totalSum : 0;
+                        const barWidth = percent * 100;
+                        const isHovered = hoveredInstitutoIndex === index;
+
+                        return (
+                          <div
+                            key={`${inst.name}-${index}`}
+                            className="space-y-2"
+                            onMouseEnter={() => handleInstitutoMouseEnter(index)}
+                            onMouseLeave={handleInstitutoMouseLeave}
+                          >
+                            {/* Linha com nome */}
+                            <div className="flex items-center gap-2 text-sm">
+                              <span
+                                className={`inline-block w-3 h-3 rounded-full transition-all duration-200 ${
+                                  isHovered ? 'w-4 h-4' : ''
+                                }`}
+                                style={{ backgroundColor: inst.color }}
+                              />
+                              <span className="text-gray-700 font-medium text-xs truncate" title={getInstitutoDisplayName(inst.name)}>
+                                {getInstitutoDisplayName(inst.name)}
+                              </span>
+                            </div>
+
+                            {/* Barra de progresso com rótulo no final */}
+                            <div className="w-full bg-gray-200 rounded-lg h-7 overflow-hidden relative">
+                              {/* Preenchimento da barra */}
+                              <div
+                                className={`h-full rounded-lg transition-all duration-300 relative ${
+                                  isHovered ? 'brightness-110' : ''
+                                }`}
+                                style={{
+                                  width: `${barWidth}%`,
+                                  backgroundColor: inst.color,
+                                  boxShadow: isHovered ? '0 0 8px rgba(0,0,0,0.3)' : 'none',
+                                  minWidth: barWidth > 0 ? '24px' : '0'
+                                }}
+                              />
+                              {/* Rótulo fixo no final da barra de progresso */}
+                              <div className="absolute inset-y-0 right-2 pointer-events-none flex items-center">
+                                <span className="text-gray-800 font-semibold text-xs whitespace-nowrap">
+                                  {inst.total} ({(percent * 100).toFixed(1)}%)
+                                </span>
+                                <span
+                                  className="ml-1 inline-block w-2.5 h-2.5 rounded-full"
+                                  style={{ backgroundColor: inst.color }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Pesquisadores por Campo Experimental */}
         {fazendasChartData.length > 0 && (
-          <Card className={styles.cardContainer}>
+          <Card className={`${styles.cardContainer} lg:row-span-2 h-full  shadow-sm border-gray-100 bg-gradient-to-br from-white to-gray-50 h-full flex-1`}>
             <CardHeader className="pb-1">
               <CardTitle className="text-lg md:text-xl">Pesquisadores por Campo Experimental</CardTitle>
               <p className="text-sm text-gray-500">Distribuição dos pesquisadores</p>
