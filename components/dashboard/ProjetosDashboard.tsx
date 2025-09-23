@@ -5,7 +5,8 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { CalendarIcon, DollarSignIcon, TrendingUpIcon, FilterIcon, DownloadIcon } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CalendarIcon, DollarSignIcon, TrendingUpIcon, FilterIcon, DownloadIcon, MapPin } from 'lucide-react';
 import styles from './RegionaisDashboard.module.css';
 
 interface ProgramaData {
@@ -164,6 +165,7 @@ export default function ProjetosDashboard() {
   const [viewMode, setViewMode] = useState<'graficos' | 'tabelas'>('graficos');
   const [exportandoFinanceiro, setExportandoFinanceiro] = useState(false);
   const [exportandoQuantitativo, setExportandoQuantitativo] = useState(false);
+  const [regionalSelecionado, setRegionalSelecionado] = useState<string>('SEDE');
 
   // Estados para controlar as fatias "puxadas" e interatividade dos gráficos
   const [activeQuantitativoIndex, setActiveQuantitativoIndex] = useState<number | null>(null);
@@ -561,150 +563,134 @@ export default function ProjetosDashboard() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Card de Resumo - AGORA MOSTRA DADOS DO ANO SELECIONADO */}
-      <div className="relative">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-              <Dialog open={isYearModalOpen} onOpenChange={setIsYearModalOpen}>
-                <DialogTrigger asChild>
-                  <div className="flex flex-col items-center justify-center rounded-xl py-6 px-4 bg-white shadow-md border border-gray-100 hover:bg-gray-50 hover:shadow-md hover:scale-[1.02] cursor-pointer">
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <CalendarIcon size={20} />
-                      <span className="text-sm font-medium">Filtrar por Ano</span>
-                    </div>
-                    <p className="text-xl md:text-2xl font-bold">
-                      {anoSelecionado === 0 ? 'Todos' : anoSelecionado}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">👆 Clique para alterar</p>
-                  </div>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Selecionar Ano</DialogTitle>
-                    <DialogDescription>
-                      Escolha o ano para visualizar os dados no resumo
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid grid-cols-2 gap-3 py-4">
-                    <Button
-                      variant={anoSelecionado === 0 ? "default" : "outline"}
-                      onClick={() => handleYearSelect('todos')}
-                      className={`h-12 col-span-2 ${anoSelecionado === 0 ? 'bg-[#025C3E] hover:bg-[#157A5B]' : ''}`}
-                    >
-                      Todos os Anos
-                    </Button>
-                    {anos.map(ano => (
-                      <Button
-                        key={ano}
-                        variant={ano === anoSelecionado ? "default" : "outline"}
-                        onClick={() => handleYearSelect(ano)}
-                        className={`h-12 ${ano === anoSelecionado ? 'bg-[#025C3E] hover:bg-[#157A5B]' : ''}`}
-                      >
-                        {ano}
-                      </Button>
-                    ))}
-                  </div>
-                </DialogContent>
-              </Dialog>
-              
-              <div className="flex flex-col items-center justify-center rounded-xl py-6 px-4 bg-white shadow-md border border-gray-100 hover:bg-gray-50 hover:shadow-md hover:scale-[1.02] cursor-pointer">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <TrendingUpIcon size={20} />
-                  <span className="text-sm font-medium">
-                    Projetos {anoSelecionado === 0 ? 'Total' : anoSelecionado}
+      {/* Box única com filtros e KPIs */}
+      <Card className="shadow-md border border-gray-100">
+        <CardContent className="pt-6">
+          {/* Filtros inline */}
+          <div className="flex flex-wrap items-center gap-4 mb-4">
+            <div className="flex items-center gap-2">
+              <MapPin className="text-gray-600" size={18} />
+              <span className="text-sm text-gray-700">Regional:</span>
+              <Select value={regionalSelecionado} onValueChange={setRegionalSelecionado}>
+                <SelectTrigger className="h-9 w-[160px] border-2 border-emerald-700 text-emerald-800 focus:ring-emerald-700 focus-visible:ring-emerald-700">
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SEDE">SEDE</SelectItem>
+                  <SelectItem value="SUL">SUL</SelectItem>
+                  <SelectItem value="SUDESTE">SUDESTE</SelectItem>
+                  <SelectItem value="OESTE">OESTE</SelectItem>
+                  <SelectItem value="GERAL">GERAL</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="text-gray-600" size={18} />
+              <span className="text-sm text-gray-700">Ano:</span>
+              <Select value={anoSelecionado === 0 ? 'todos' : String(anoSelecionado)} onValueChange={(val) => handleYearSelect(val === 'todos' ? 'todos' : Number(val))}>
+                <SelectTrigger className="h-9 w-[120px] border-2 border-emerald-700 text-emerald-800 focus:ring-emerald-700 focus-visible:ring-emerald-700">
+                  <SelectValue placeholder="Ano" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  {anos.map((ano) => (
+                    <SelectItem key={ano} value={String(ano)}>{ano}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="ml-auto">
+              <Button variant="outline" className="flex items-center gap-2" onClick={() => setIsProgramModalOpen(true)}>
+                <FilterIcon size={18} /> Programas ({programasSelecionados.length}/{data?.programas.length || 0})
+              </Button>
+            </div>
+          </div>
+
+          {/* KPIs em 4 caixas */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-4">
+              <div className="text-sm text-gray-700 mb-1">Projetos (Total)</div>
+              <div className="text-2xl md:text-2xl font-extrabold text-blue-700">
+                {data ? data.totais_gerais.total_projetos_geral : 0}
+              </div>
+            </div>
+            <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4">
+              <div className="text-sm text-gray-700 mb-1">Projetos (Ano)</div>
+              <div className="text-2xl md:text-2xl font-extrabold text-red-700">
+                {anoSelecionado === 0 ? (data ? data.totais_gerais.projetos_ano_vigente : 0) : projetosAno}
+              </div>
+            </div>
+            <div className="rounded-xl border border-green-200 bg-green-50 px-5 py-4">
+              <div className="text-sm text-gray-700 mb-1">Valor (Total)</div>
+              <div className="text-2xl md:text-2xl font-extrabold text-green-700">
+                R$ {data ? data.totais_gerais.valor_total_geral.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
+              </div>
+            </div>
+            <div className="rounded-xl border border-green-200 bg-green-50 px-5 py-4">
+              <div className="text-sm text-gray-700 mb-1">Valor (Ano)</div>
+              <div className="text-2xl md:text-2xl font-extrabold text-green-700">
+                R$ {(anoSelecionado === 0 ? data?.totais_gerais.valor_ano_vigente : valorAno)?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+            </div>
+          </div>
+
+          {/* Dialog de Programas (reutilizado) */}
+          <Dialog open={isProgramModalOpen} onOpenChange={setIsProgramModalOpen}>
+            <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Selecionar Programas</DialogTitle>
+                <DialogDescription>
+                  Escolha os programas que deseja visualizar nos gráficos e relatórios
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4 space-y-4">
+                <div className="flex justify-between items-center">
+                  <Button
+                    variant="outline"
+                    onClick={handleSelectAllPrograms}
+                    className="text-sm"
+                  >
+                    {data && programasSelecionados.length === data.programas.length ? 'Deselecionar Todos' : 'Selecionar Todos'}
+                  </Button>
+                  <span className="text-sm text-gray-500">
+                    {programasSelecionados.length} de {data?.programas.length || 0} selecionados
                   </span>
                 </div>
-                <p className="text-xl md:text-2xl font-bold">
-                  {anoSelecionado === 0 ? data.totais_gerais.total_projetos_geral : projetosAno}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {anoSelecionado === 0 ? 'de todos os anos' : 'do ano selecionado'}
-                </p>
-              </div>
-              <div className="flex flex-col items-center justify-center rounded-xl py-6 px-4 bg-white shadow-md border border-gray-100 hover:bg-gray-50 hover:shadow-md hover:scale-[1.02] cursor-pointer">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <DollarSignIcon size={20} />
-                  <span className="text-sm font-medium">
-                    Valor {anoSelecionado === 0 ? 'Total' : anoSelecionado}
-                  </span>
-                </div>
-                <p className="text-lg md:text-xl font-bold">
-                  R$ {anoSelecionado === 0 
-                    ? data.totais_gerais.valor_total_geral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-                    : valorAno.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-                  }
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {anoSelecionado === 0 ? 'de todos os anos' : 'do ano selecionado'}
-                </p>
-              </div>
-              <Dialog open={isProgramModalOpen} onOpenChange={setIsProgramModalOpen}>
-                <DialogTrigger asChild>
-                  <div className="flex flex-col items-center justify-center rounded-xl py-6 px-4 bg-white shadow-md border border-gray-100 hover:bg-gray-50 hover:shadow-md hover:scale-[1.02] cursor-pointer">
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <FilterIcon size={20} />
-                      <span className="text-sm font-medium">Programas</span>
-                    </div>
-                    <p className="text-xl md:text-2xl font-bold">
-                      {programasSelecionados.length}/{data.programas.length}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">👆 Clique para alterar</p>
-                  </div>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Selecionar Programas</DialogTitle>
-                    <DialogDescription>
-                      Escolha os programas que deseja visualizar nos gráficos e relatórios
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="py-4 space-y-4">
-                    <div className="flex justify-between items-center">
-                      <Button
-                        variant="outline"
-                        onClick={handleSelectAllPrograms}
-                        className="text-sm"
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {data?.programas.map((programa) => (
+                    <div key={programa.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-gray-50">
+                      <input
+                        type="checkbox"
+                        id={`programa-${programa.id}`}
+                        checked={programasSelecionados.includes(programa.id)}
+                        onChange={() => handleProgramSelect(programa.id)}
+                        className="h-4 w-4 text-[#025C3E] focus:ring-[#025C3E] border-gray-300 rounded"
+                      />
+                      <label 
+                        htmlFor={`programa-${programa.id}`}
+                        className="flex-1 text-sm font-medium text-gray-700 cursor-pointer"
                       >
-                        {programasSelecionados.length === data.programas.length ? 'Deselecionar Todos' : 'Selecionar Todos'}
-                      </Button>
-                      <span className="text-sm text-gray-500">
-                        {programasSelecionados.length} de {data.programas.length} selecionados
+                        {programa.nome}
+                      </label>
+                      <span className="text-xs text-gray-500">
+                        {programa.total_projetos} projetos
                       </span>
                     </div>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {data.programas.map((programa) => (
-                        <div key={programa.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-gray-50">
-                          <input
-                            type="checkbox"
-                            id={`programa-${programa.id}`}
-                            checked={programasSelecionados.includes(programa.id)}
-                            onChange={() => handleProgramSelect(programa.id)}
-                            className="h-4 w-4 text-[#025C3E] focus:ring-[#025C3E] border-gray-300 rounded"
-                          />
-                          <label 
-                            htmlFor={`programa-${programa.id}`}
-                            className="flex-1 text-sm font-medium text-gray-700 cursor-pointer"
-                          >
-                            {programa.nome}
-                          </label>
-                          <span className="text-xs text-gray-500">
-                            {programa.total_projetos} projetos
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex justify-end pt-4 border-t">
-                      <Button
-                        onClick={() => setIsProgramModalOpen(false)}
-                        className="bg-[#025C3E] hover:bg-[#157A5B]"
-                      >
-                        Aplicar Filtros
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-      </div>
+                  ))}
+                </div>
+                <div className="flex justify-end pt-4 border-t">
+                  <Button
+                    onClick={() => setIsProgramModalOpen(false)}
+                    className="bg-[#025C3E] hover:bg-[#157A5B]"
+                  >
+                    Aplicar Filtros
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </CardContent>
+      </Card>
 
       {/* Switch de Visualização */}
       <div className="flex justify-center">
@@ -1002,27 +988,27 @@ export default function ProjetosDashboard() {
               </div>
 
               {/* Versão Desktop - Tabela */}
-              <div className="hidden lg:block overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
+              <div className="hidden lg:block overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+                <table className="w-full border-collapse text-sm">
+                  <thead className="sticky top-0 z-10">
                     <tr className="bg-[#025C3E] text-white">
-                      <th className="border border-gray-300 p-3 text-left font-semibold">Programa</th>
+                      <th className="border border-gray-200 p-3 px-4 text-left font-semibold">Programa</th>
                       {anoSelecionado === 0 ? (
                         // Mostrar todos os anos
                         anos.map(ano => (
-                          <th key={ano} className="border border-gray-300 p-3 text-center font-semibold min-w-[140px]">
+                          <th key={ano} className="border border-gray-200 p-3 px-4 text-right font-semibold min-w-[140px] whitespace-nowrap">
                             {ano}<br />
                             <span className="text-xs font-normal">(Valor R$)</span>
                           </th>
                         ))
                       ) : (
                         // Mostrar apenas o ano selecionado
-                        <th className="border border-gray-300 p-3 text-center font-semibold min-w-[140px]">
+                        <th className="border border-gray-200 p-3 px-4 text-right font-semibold min-w-[140px] whitespace-nowrap">
                           {anoSelecionado}<br />
                           <span className="text-xs font-normal">(Valor R$)</span>
                         </th>
                       )}
-                      <th className="border border-gray-300 p-3 text-center font-semibold min-w-[150px]">
+                      <th className="border border-gray-200 p-3 px-4 text-right font-semibold min-w-[150px] whitespace-nowrap">
                         Total<br />
                         <span className="text-xs font-normal">(Aprovado R$)</span>
                       </th>
@@ -1030,8 +1016,8 @@ export default function ProjetosDashboard() {
                   </thead>
                   <tbody>
                     {programas.map((programa, index) => (
-                      <tr key={programa.id} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                        <td className="border border-gray-300 p-3 font-medium">
+                      <tr key={programa.id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-gray-100/60 transition-colors`}>
+                        <td className="border border-gray-200 p-3 px-4 font-medium">
                           <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
                             {programa.nome}
@@ -1040,17 +1026,17 @@ export default function ProjetosDashboard() {
                         {anoSelecionado === 0 ? (
                           // Mostrar todos os anos
                           anos.map(ano => (
-                            <td key={ano} className="border border-gray-300 p-3 text-center">
+                            <td key={ano} className="border border-gray-200 p-3 px-4 text-right font-mono tabular-nums whitespace-nowrap">
                               {(programa.valores_por_ano[ano] || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </td>
                           ))
                         ) : (
                           // Mostrar apenas o ano selecionado
-                          <td className="border border-gray-300 p-3 text-center">
+                          <td className="border border-gray-200 p-3 px-4 text-right font-mono tabular-nums whitespace-nowrap">
                             {(programa.valores_por_ano[anoSelecionado] || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </td>
                         )}
-                        <td className="border border-gray-300 p-3 text-center font-bold text-[#025C3E]">
+                        <td className="border border-gray-200 p-3 px-4 text-right font-bold text-[#025C3E]">
                           {programa.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </td>
                       </tr>
@@ -1058,21 +1044,21 @@ export default function ProjetosDashboard() {
                     
                     {/* Linha de Totais */}
                     <tr className="bg-[#025C3E] text-white font-bold">
-                      <td className="border border-gray-300 p-3">TOTAL GERAL</td>
+                      <td className="border border-gray-200 p-3 px-4">TOTAL GERAL</td>
                       {anoSelecionado === 0 ? (
                         // Mostrar todos os anos
                         anos.map(ano => (
-                          <td key={ano} className="border border-gray-300 p-3 text-center">
+                          <td key={ano} className="border border-gray-200 p-3 px-4 text-right whitespace-nowrap">
                             {(data.totais_gerais.valores_por_ano[ano] || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </td>
                         ))
                       ) : (
                         // Mostrar apenas o ano selecionado
-                        <td className="border border-gray-300 p-3 text-center">
+                        <td className="border border-gray-200 p-3 px-4 text-right whitespace-nowrap">
                           {(data.totais_gerais.valores_por_ano[anoSelecionado] || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </td>
                       )}
-                      <td className="border border-gray-300 p-3 text-center">
+                      <td className="border border-gray-200 p-3 px-4 text-right whitespace-nowrap">
                         {data.totais_gerais.valor_total_geral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
@@ -1153,27 +1139,27 @@ export default function ProjetosDashboard() {
               </div>
 
               {/* Versão Desktop - Tabela */}
-              <div className="hidden lg:block overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
+              <div className="hidden lg:block overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+                <table className="w-full border-collapse text-sm">
+                  <thead className="sticky top-0 z-10">
                     <tr className="bg-[#157A5B] text-white">
-                      <th className="border border-gray-300 p-3 text-left font-semibold">Programa</th>
+                      <th className="border border-gray-200 p-3 px-4 text-left font-semibold">Programa</th>
                       {anoSelecionado === 0 ? (
                         // Mostrar todos os anos
                         anos.map(ano => (
-                          <th key={ano} className="border border-gray-300 p-3 text-center font-semibold min-w-[120px]">
+                          <th key={ano} className="border border-gray-200 p-3 px-4 text-right font-semibold min-w-[120px] whitespace-nowrap">
                             {ano}<br />
                             <span className="text-xs font-normal">(Qtd)</span>
                           </th>
                         ))
                       ) : (
                         // Mostrar apenas o ano selecionado
-                        <th className="border border-gray-300 p-3 text-center font-semibold min-w-[120px]">
+                        <th className="border border-gray-200 p-3 px-4 text-right font-semibold min-w-[120px] whitespace-nowrap">
                           {anoSelecionado}<br />
                           <span className="text-xs font-normal">(Qtd)</span>
                         </th>
                       )}
-                      <th className="border border-gray-300 p-3 text-center font-semibold min-w-[150px]">
+                      <th className="border border-gray-200 p-3 px-4 text-right font-semibold min-w-[150px] whitespace-nowrap">
                         Total<br />
                         <span className="text-xs font-normal">(Projetos)</span>
                       </th>
@@ -1181,8 +1167,8 @@ export default function ProjetosDashboard() {
                   </thead>
                   <tbody>
                     {programas.map((programa, index) => (
-                      <tr key={programa.id} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                        <td className="border border-gray-300 p-3 font-medium">
+                      <tr key={programa.id} className={`${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-gray-100/60 transition-colors`}>
+                        <td className="border border-gray-200 p-3 px-4 font-medium">
                           <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
                             {programa.nome}
@@ -1191,17 +1177,17 @@ export default function ProjetosDashboard() {
                         {anoSelecionado === 0 ? (
                           // Mostrar todos os anos
                           anos.map(ano => (
-                            <td key={ano} className="border border-gray-300 p-3 text-center">
+                            <td key={ano} className="border border-gray-200 p-3 px-4 text-right font-mono tabular-nums whitespace-nowrap">
                               {programa.projetos_por_ano[ano] || 0}
                             </td>
                           ))
                         ) : (
                           // Mostrar apenas o ano selecionado
-                          <td className="border border-gray-300 p-3 text-center">
+                          <td className="border border-gray-200 p-3 px-4 text-right font-mono tabular-nums whitespace-nowrap">
                             {programa.projetos_por_ano[anoSelecionado] || 0}
                           </td>
                         )}
-                        <td className="border border-gray-300 p-3 text-center font-bold text-[#157A5B]">
+                        <td className="border border-gray-200 p-3 px-4 text-right font-bold text-[#157A5B]">
                           {programa.total_projetos}
                         </td>
                       </tr>
@@ -1209,21 +1195,21 @@ export default function ProjetosDashboard() {
                     
                     {/* Linha de Totais */}
                     <tr className="bg-[#157A5B] text-white font-bold">
-                      <td className="border border-gray-300 p-3">TOTAL GERAL</td>
+                      <td className="border border-gray-200 p-3 px-4">TOTAL GERAL</td>
                       {anoSelecionado === 0 ? (
                         // Mostrar todos os anos
                         anos.map(ano => (
-                          <td key={ano} className="border border-gray-300 p-3 text-center">
+                          <td key={ano} className="border border-gray-200 p-3 px-4 text-right whitespace-nowrap">
                             {data.totais_gerais.projetos_por_ano[ano] || 0}
                           </td>
                         ))
                       ) : (
                         // Mostrar apenas o ano selecionado
-                        <td className="border border-gray-300 p-3 text-center">
+                        <td className="border border-gray-200 p-3 px-4 text-right whitespace-nowrap">
                           {data.totais_gerais.projetos_por_ano[anoSelecionado] || 0}
                         </td>
                       )}
-                      <td className="border border-gray-300 p-3 text-center">
+                      <td className="border border-gray-200 p-3 px-4 text-right whitespace-nowrap">
                         {data.totais_gerais.total_projetos_geral}
                       </td>
                     </tr>

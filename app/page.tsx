@@ -12,7 +12,7 @@ export default function Home() {
             Plataforma Interativa
           </h1>
           <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto">
-            Sistema para análise de projetos e pesquisadores da EPAMIG
+            Dashboard dos pesquisadores por localidade da EPAMIG
           </p>
         </div>
 
