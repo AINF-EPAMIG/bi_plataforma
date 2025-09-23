@@ -78,11 +78,13 @@ const CustomTooltip = memo(({ active, payload }: { active?: boolean; payload?: A
     const value = data.value;
     let name = data.payload.nome;
     
-    // Para fazendas, mostrar nome completo com sigla entre parênteses
+    // Para fazendas, mostrar SIGLA primeiro
     if (data.payload.nome_fazenda && data.payload.sigla_fazenda) {
-      name = `${data.payload.nome_fazenda} (${data.payload.sigla_fazenda})`;
+      name = `${data.payload.sigla_fazenda} - ${data.payload.nome_fazenda}`;
     } else if (data.payload.sigla_fazenda) {
       name = data.payload.sigla_fazenda;
+    } else if (data.payload.nome_fazenda) {
+      name = data.payload.nome_fazenda;
     }
     
     const percent = ((value / data.payload.totalSum) * 100).toFixed(1);
@@ -440,7 +442,7 @@ export default function RegionaisDashboard() {
   }
 
   return (
-  <div className="space-y-1 md:space-y-2">
+  <div className="">
       {/* Cards institucionais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-1">
         {institutionalCards.map((card) => (
@@ -690,16 +692,16 @@ export default function RegionaisDashboard() {
                           onMouseLeave={handleFazendaMouseLeave}
                         >
                           {/* Linha com nome */}
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-between text-sm min-w-0">
+                            <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
                               <span
                                 className={`inline-block w-3 h-3 rounded-full transition-all duration-200 ${
                                   hoveredFazendaIndex === originalIndex ? 'w-4 h-4' : ''
                                 }`}
                                 style={{ backgroundColor: COLORS[originalIndex % COLORS.length] }}
                               />
-                              <span className="text-gray-700 font-medium text-xs truncate" title={`${fazenda.nome_fazenda} (${fazenda.sigla_fazenda})`}>
-                                {fazenda.nome_fazenda} ({fazenda.sigla_fazenda})
+                              <span className="text-gray-700 font-medium text-xs truncate block max-w-full" title={`${fazenda.sigla_fazenda} - ${fazenda.nome_fazenda}`}>
+                                {fazenda.sigla_fazenda} - {fazenda.nome_fazenda}
                               </span>
                             </div>
                           </div>

@@ -1,17 +1,23 @@
-import Sidebar from "../components/sidebar-responsive";
 import RegionaisDashboard from "../components/dashboard/RegionaisDashboard";
+import HomeTabs from "@/components/HomeTabs";
 
 export default function Home() {
+
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <main className="flex-1 lg:ml-[250px] p-4 sm:p-6 lg:p-8">
-        {/* Header do dashboard - Responsivo */}
-        <div className="mb-6 lg:mb-8">
-          <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-center text-[#157A5B] tracking-tight  rounded-lg py-3 px-4 sm:py-4 sm:px-6 w-full max-w-4xl mx-auto">
-            Pesquisadores e Assessores Técnicos
-          </h2>
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+        {/* Título Principal */}
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-green-800 mb-4">
+            Plataforma Interativa
+          </h1>
+          <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto">
+            Sistema para análise de projetos e pesquisadores da EPAMIG
+          </p>
         </div>
+
+        {/* Abas para desktop */}
+        <HomeTabs />
         
         {/* Dashboard de regionais */}
         <RegionaisDashboard />
