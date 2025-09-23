@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useCallback, memo, useRef } from 'react';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import styles from './RegionaisDashboard.module.css';
 
@@ -228,6 +228,29 @@ export default function RegionaisDashboard() {
     return agrupadas.map(item => ({ ...item, totalSum }));
   }, [fazendasData?.fazendas]);
 
+  // Nome completo dos institutos seguido da sigla (usado em múltiplos locais)
+  const getInstitutoDisplayName = useCallback((siglaOuNome: string) => {
+    if (siglaOuNome === 'ILCT') return 'Instituto de Laticínios Cândido Tostes (ILCT)';
+    if (siglaOuNome === 'ITAP') return 'Instituto Tecnológico de Agropecuária de Pitangui (ITAP)';
+    // Caso venha o nome completo já, mantém e adiciona sigla se reconhecida
+    if (siglaOuNome.toUpperCase().includes('LATICÍNIOS') && !siglaOuNome.includes('(ILCT)')) {
+      return `${siglaOuNome} (ILCT)`;
+    }
+    if (siglaOuNome.toUpperCase().includes('AGROPECUÁRIA') && !siglaOuNome.includes('(ITAP)')) {
+      return `${siglaOuNome} (ITAP)`;
+    }
+    return siglaOuNome;
+  }, []);
+
+  // Apenas sigla do instituto (ILCT/ITAP)
+  const getInstitutoSigla = useCallback((siglaOuNome: string) => {
+    const upper = siglaOuNome.toUpperCase();
+    if (upper.includes('ILCT')) return 'ILCT';
+    if (upper.includes('ITAP')) return 'ITAP';
+    if (upper === 'ILCT' || upper === 'ITAP') return upper;
+    return siglaOuNome; // fallback
+  }, []);
+
   // Dados para o gráfico de Institutos Tecnológicos
   const institutosChartData = useMemo(() => {
     if (!institutosData?.institutos?.length) return [];
@@ -249,6 +272,21 @@ export default function RegionaisDashboard() {
       color: getColorForInstituto(i.nome)
     }));
   }, [institutosData?.institutos]);
+
+  // Dados normalizados em percentual para o BarChart de Institutos
+  const institutosBarData = useMemo(() => {
+    if (!institutosChartData.length) return [] as Array<{ name: string; sigla: string; fullName: string; total: number; percent: number; color: string; totalSum: number }>;
+    const totalSum = institutosChartData.reduce((acc, d) => acc + d.total, 0);
+    return institutosChartData.map((d) => ({
+      name: getInstitutoSigla(d.name),
+      sigla: getInstitutoSigla(d.name),
+      fullName: getInstitutoDisplayName(d.name),
+      total: d.total,
+      percent: totalSum > 0 ? (d.total / totalSum) * 100 : 0,
+      color: d.color,
+      totalSum,
+    }));
+  }, [institutosChartData, getInstitutoDisplayName, getInstitutoSigla]);
 
   // Handlers apenas para os eventos de hover (efeito visual suave)
   const handleRegionalMouseEnter = useCallback((index: number) => {
@@ -320,6 +358,24 @@ export default function RegionaisDashboard() {
     hoverTimeoutsRef.current.institutoLeave = timeout;
   }, []);
 
+  // Rótulo de bolinha ao final da barra (indicador visual)
+  const renderInstitutoEndDot = useCallback((props: { x?: number | string; y?: number | string; width?: number | string; height?: number | string; index?: number }) => {
+    const { x = 0, y = 0, width = 0, height = 0, index } = props;
+    if (index == null || index < 0 || index >= institutosBarData.length) return null;
+    const nx = typeof x === 'string' ? Number(x) : x;
+    const ny = typeof y === 'string' ? Number(y) : y;
+    const nwidth = typeof width === 'string' ? Number(width) : width;
+    const nheight = typeof height === 'string' ? Number(height) : height;
+    const cx = nx + nwidth + 8;
+    const cy = ny + nheight / 2;
+    const color = institutosBarData[index].color;
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={4} fill={color} />
+      </g>
+    );
+  }, [institutosBarData]);
+
   // Memoização dos cards institucionais
   const institutionalCards = useMemo(() => [
     { label: 'Unidades Regionais', value: 5 },
@@ -333,19 +389,7 @@ export default function RegionaisDashboard() {
     return `${((percent ?? 0) * 100).toFixed(1)}%`;
   }, []);
 
-  // Nome completo dos institutos seguido da sigla
-  const getInstitutoDisplayName = useCallback((siglaOuNome: string) => {
-    if (siglaOuNome === 'ILCT') return 'Instituto de Laticínios Cândido Tostes (ILCT)';
-    if (siglaOuNome === 'ITAP') return 'Instituto Tecnológico de Agropecuária de Pitangui (ITAP)';
-    // Caso venha o nome completo já, mantém e adiciona sigla se reconhecida
-    if (siglaOuNome.toUpperCase().includes('LATICÍNIOS') && !siglaOuNome.includes('(ILCT)')) {
-      return `${siglaOuNome} (ILCT)`;
-    }
-    if (siglaOuNome.toUpperCase().includes('AGROPECUÁRIA') && !siglaOuNome.includes('(ITAP)')) {
-      return `${siglaOuNome} (ITAP)`;
-    }
-    return siglaOuNome;
-  }, []);
+  
 
   if (loading) {
     return (
@@ -482,84 +526,109 @@ export default function RegionaisDashboard() {
           </CardContent>
         </Card>
 
-        {/* Pesquisadores por Instituto Tecnológico (legenda estilo barras) */}
+        {/* Pesquisadores por Instituto Tecnológico (BarChart horizontal em % como referência) */}
           <Card className={`${styles.cardContainer} shadow-sm border-gray-100 bg-gradient-to-br from-white to-gray-50 h-full flex-1`}>
-            <CardHeader className="pb-2 border-b border-gray-100">
+            <CardHeader className="pb-4 border-b border-gray-100">
               <CardTitle className="text-lg md:text-xl text-gray-800 flex items-center gap-2">
-                Pesquisadores por Instituto Tecnológico
+                Pesquisadores por Institutos Tecnológicos
               </CardTitle>
             </CardHeader>
-            <CardContent className="relative py-3 px-4">
+            <CardContent className="relative pt-10 pb-2 px-3">
               {institutosChartData.length === 0 ? (
                 <div className="text-center text-sm text-gray-500 py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
                   <div className="text-gray-400 mb-2">📊</div>
                   <div>Sem dados para exibir</div>
                 </div>
               ) : (
-                <div className="mt-1 space-y-1.5 h-full">
-                  <div className="grid grid-cols-1 gap-8">
-                    {institutosChartData
-                      .sort((a, b) => b.total - a.total)
-                      .map((inst, index) => {
-                        const totalSum = inst.totalSum || institutosChartData.reduce((acc, i) => acc + i.total, 0);
-                        const percent = totalSum > 0 ? inst.total / totalSum : 0;
-                        const barWidth = percent * 100;
-                        const isHovered = hoveredInstitutoIndex === index;
-
-                        return (
-                          <div
-                            key={`${inst.name}-${index}`}
-                            className="space-y-2"
-                            onMouseEnter={() => handleInstitutoMouseEnter(index)}
-                            onMouseLeave={handleInstitutoMouseLeave}
-                          >
-                            {/* Linha com nome */}
-                            <div className="flex items-center gap-2 text-sm">
-                              <span
-                                className={`inline-block w-3 h-3 rounded-full transition-all duration-200 ${
-                                  isHovered ? 'w-4 h-4' : ''
-                                }`}
-                                style={{ backgroundColor: inst.color }}
-                              />
-                              <span className="text-gray-700 font-medium text-xs truncate" title={getInstitutoDisplayName(inst.name)}>
-                                {getInstitutoDisplayName(inst.name)}
-                              </span>
-                            </div>
-
-                            {/* Barra de progresso com rótulo no final */}
-                            <div className="w-full bg-gray-200 rounded-lg h-7 overflow-hidden relative">
-                              {/* Preenchimento da barra */}
-                              <div
-                                className={`h-full rounded-lg transition-all duration-300 relative ${
-                                  isHovered ? 'brightness-110' : ''
-                                }`}
-                                style={{
-                                  width: `${barWidth}%`,
-                                  backgroundColor: inst.color,
-                                  boxShadow: isHovered ? '0 0 8px rgba(0,0,0,0.3)' : 'none',
-                                  minWidth: barWidth > 0 ? '24px' : '0'
-                                }}
-                              />
-                              {/* Rótulo fixo no final da barra de progresso */}
-                              <div className="absolute inset-y-0 right-2 pointer-events-none flex items-center">
-                                <span className="text-gray-800 font-semibold text-xs whitespace-nowrap">
-                                  {inst.total} ({(percent * 100).toFixed(1)}%)
-                                </span>
-                                <span
-                                  className="ml-1 inline-block w-2.5 h-2.5 rounded-full"
-                                  style={{ backgroundColor: inst.color }}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                <>
+                  <ResponsiveContainer width="100%" height={institutosBarData.length * 64 + 16}>
+                    <BarChart
+                      data={institutosBarData}
+                      layout="vertical"
+                      margin={{ top: 4, right: 16, bottom: 0, left: 8 }}
+                      barCategoryGap={70}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={true} horizontal={false} stroke="#d1d5db" />
+                      <XAxis
+                        type="number"
+                        domain={[0, 100]}
+                        tickFormatter={(v) => `${v}%`}
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: '#6b7280' }}
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        width={60}
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: '#374151' }}
+                      />
+                      <Tooltip
+                        formatter={(val: unknown) => {
+                          const value = typeof val === 'number' ? val : Number(val ?? 0);
+                          return [`${Math.round(value)}%`, 'Percentual'];
+                        }}
+                        labelFormatter={(label, payload) => {
+                          const p = Array.isArray(payload) && payload[0] && (payload[0] as { payload?: { fullName?: string } }).payload;
+                          return (p && p.fullName) || String(label);
+                        }}
+                        contentStyle={{
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                          fontSize: '12px'
+                        }}
+                      />
+                      <Bar dataKey="percent" radius={[7, 7, 7, 7]} barSize={30}>
+                        {institutosBarData.map((d, i) => (
+                          <Cell key={`cell-inst-${i}`} fill={d.color} />
+                        ))}
+                        <LabelList
+                          position="right"
+                          formatter={(v: unknown, _name: unknown, props?: { payload?: { total?: number } }) => {
+                            const total = props?.payload?.total ?? 0;
+                            const raw = typeof v === 'number' ? v : Number(v ?? 0);
+                            const percent = Number.isFinite(raw) ? raw : 0;
+                            return `${total} (${percent.toFixed(1)}%)`;
+                          }}
+                          className="fill-gray-700 text-xs font-semibold"
+                        />
+                        <LabelList content={renderInstitutoEndDot} />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <div className="mt-1 grid grid-cols-1 gap-1.5">
+                    {institutosBarData.map((instituto, index) => (
+                      <div 
+                        key={instituto.sigla} 
+                        className="flex items-center gap-2 text-sm p-2 rounded transition-all duration-200 hover:bg-gray-50"
+                        onMouseEnter={() => handleInstitutoMouseEnter(index)}
+                        onMouseLeave={handleInstitutoMouseLeave}
+                      >
+                        <span
+                          className={`inline-block w-3 h-3 rounded-full transition-all duration-200 ${
+                            hoveredInstitutoIndex === index ? 'w-4 h-4' : ''
+                          }`}
+                          style={{ backgroundColor: instituto.color }}
+                        />
+                        <span className="text-gray-700 flex-1">
+                          {instituto.fullName}
+                        </span>
+                        <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                          {instituto.total}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                </>
               )}
             </CardContent>
           </Card>
         </div>
+          
 
         {/* Pesquisadores por Campo Experimental */}
         {fazendasChartData.length > 0 && (
