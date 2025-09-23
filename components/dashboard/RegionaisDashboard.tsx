@@ -462,7 +462,6 @@ export default function RegionaisDashboard() {
         <Card className={styles.cardContainer}>
           <CardHeader className="pb-1">
             <CardTitle className="text-lg md:text-xl">Pesquisadores por Unidade</CardTitle>
-            <p className="text-sm text-gray-500">Distribuição dos pesquisadores</p>
           </CardHeader>
           <CardContent className="relative py-1">
             <ResponsiveContainer width="100%" height={420} className={styles.chartContainer}>
@@ -635,7 +634,6 @@ export default function RegionaisDashboard() {
           <Card className={`${styles.cardContainer} lg:row-span-2 h-full  shadow-sm border-gray-100 bg-gradient-to-br from-white to-gray-50 h-full flex-1`}>
             <CardHeader className="pb-1">
               <CardTitle className="text-lg md:text-xl">Pesquisadores por Campo Experimental</CardTitle>
-              <p className="text-sm text-gray-500">Distribuição dos pesquisadores</p>
             </CardHeader>
             <CardContent className="relative py-1">
               <ResponsiveContainer width="100%" height={420} className={styles.chartContainer}>
