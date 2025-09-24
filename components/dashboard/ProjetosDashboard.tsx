@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, DollarSignIcon, TrendingUpIcon, FilterIcon, DownloadIcon, MapPin } from 'lucide-react';
+import { CalendarIcon, DollarSignIcon, TrendingUpIcon, FilterIcon, DownloadIcon } from 'lucide-react';
 import styles from './RegionaisDashboard.module.css';
 
 interface ProgramaData {
@@ -165,7 +165,7 @@ export default function ProjetosDashboard() {
   const [viewMode, setViewMode] = useState<'graficos' | 'tabelas'>('graficos');
   const [exportandoFinanceiro, setExportandoFinanceiro] = useState(false);
   const [exportandoQuantitativo, setExportandoQuantitativo] = useState(false);
-  const [regionalSelecionado, setRegionalSelecionado] = useState<string>('SEDE');
+  
 
   // Estados para controlar as fatias "puxadas" e interatividade dos gráficos
   const [activeQuantitativoIndex, setActiveQuantitativoIndex] = useState<number | null>(null);
@@ -568,22 +568,6 @@ export default function ProjetosDashboard() {
         <CardContent className="pt-6">
           {/* Filtros inline */}
           <div className="flex flex-wrap items-center gap-4 mb-4">
-            <div className="flex items-center gap-2">
-              <MapPin className="text-gray-600" size={18} />
-              <span className="text-sm text-gray-700">Regional:</span>
-              <Select value={regionalSelecionado} onValueChange={setRegionalSelecionado}>
-                <SelectTrigger className="h-9 w-[160px] border-2 border-emerald-700 text-emerald-800 focus:ring-emerald-700 focus-visible:ring-emerald-700">
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="SEDE">SEDE</SelectItem>
-                  <SelectItem value="SUL">SUL</SelectItem>
-                  <SelectItem value="SUDESTE">SUDESTE</SelectItem>
-                  <SelectItem value="OESTE">OESTE</SelectItem>
-                  <SelectItem value="GERAL">GERAL</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <div className="flex items-center gap-2">
               <CalendarIcon className="text-gray-600" size={18} />
               <span className="text-sm text-gray-700">Ano:</span>
