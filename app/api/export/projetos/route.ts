@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import ExcelJS from 'exceljs';
 import { getConnection } from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
@@ -139,6 +141,8 @@ export async function POST(request: Request) {
       programas?: string[];
       anos?: string[];
       anoSelecionado?: number;
+  regional?: string;
+  regionalId?: number;
     };
 
   const tipo = body?.tipo ?? 'financeiro';
@@ -165,6 +169,31 @@ export async function POST(request: Request) {
       params.push(...anosNumeros);
     }
 
+    // Regional join/where
+    const regional = (body?.regional ?? '').toUpperCase();
+    const regionalId = Number(body?.regionalId);
+    const useRegionalId = Number.isFinite(regionalId);
+    const useRegional = !useRegionalId && regional && regional !== 'GERAL';
+    const regionalJoin = '';
+    if (useRegionalId) {
+      whereParts.push('proj.unidade = ?');
+      params.push(regionalId);
+    } else if (useRegional) {
+      whereParts.push('proj.unidade = ?');
+      // Map label → id
+      const labelToId: Record<string, number> = {
+        'SEDE': 1,
+        'CENTRO OESTE': 2,
+        'NORTE': 3,
+        'OESTE': 4,
+        'SUL': 5,
+        'SUDESTE': 6,
+        'ILCT': 7,
+        'ITAP': 8,
+      };
+      params.push(labelToId[regional] ?? -1);
+    }
+
     const whereSql = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
 
     interface AggRow extends RowDataPacket {
@@ -184,8 +213,9 @@ export async function POST(request: Request) {
           CAST(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(proj.valor_aprovado, '0'), '.', ''), ',', '.'), ' ', ''), 'R$', '') AS DECIMAL(15,2))
         ), 0) AS valor_total,
         COUNT(*) AS total_projetos
-      FROM projetos AS proj
-      INNER JOIN programa AS prog ON prog.id = proj.codigo_programa
+  FROM projetos AS proj
+  INNER JOIN programa AS prog ON prog.id = proj.codigo_programa
+  ${regionalJoin}
       ${whereSql.replaceAll('codigo_', 'proj.codigo_').replaceAll('YEAR(final)', 'YEAR(proj.final)').replace("responsavel ", "proj.responsavel ")}
       GROUP BY proj.codigo_programa, prog.nome, YEAR(proj.final)
       ORDER BY proj.codigo_programa, ano
