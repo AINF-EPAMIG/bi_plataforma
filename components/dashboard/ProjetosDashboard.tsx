@@ -165,7 +165,7 @@ export default function ProjetosDashboard() {
   const [viewMode, setViewMode] = useState<'graficos' | 'tabelas'>('graficos');
   const [exportandoFinanceiro, setExportandoFinanceiro] = useState(false);
   const [exportandoQuantitativo, setExportandoQuantitativo] = useState(false);
-  const [regionalSelecionado, setRegionalSelecionado] = useState<string>('SEDE');
+  const [regionalSelecionado, setRegionalSelecionado] = useState<string>('GERAL');
   
 
   // Estados para controlar as fatias "puxadas" e interatividade dos gráficos
