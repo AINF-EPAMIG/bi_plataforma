@@ -1,4 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
+
+export const dynamic = 'force-dynamic';
 import { getConnection } from "@/lib/db";
 import { RowDataPacket } from "mysql2";
 
@@ -22,9 +24,26 @@ interface ProgramaData {
   total_projetos: number;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const conn = await getConnection();
+    const { searchParams } = new URL(request.url);
+    const regionalParam = (searchParams.get('regional') || '').toUpperCase();
+    const regionalIdParam = parseInt(searchParams.get('regionalId') || '', 10);
+    const labelToId: Record<string, number> = {
+      'SEDE': 1,
+      'CENTRO OESTE': 2,
+      'NORTE': 3,
+      'OESTE': 4,
+      'SUL': 5,
+      'SUDESTE': 6,
+      'ILCT': 7,
+      'ITAP': 8,
+    };
+    const selectedRegionalId = Number.isFinite(regionalIdParam)
+      ? regionalIdParam
+      : (regionalParam && regionalParam !== 'GERAL' ? labelToId[regionalParam] : undefined);
+    const filtrarPorRegional = typeof selectedRegionalId === 'number' && Number.isFinite(selectedRegionalId);
     
     // Gerar anos dinamicamente (ano atual + 4 anos)
     const anoAtual = new Date().getFullYear();
@@ -55,7 +74,7 @@ export async function GET() {
       totaisGerais.projetos_por_ano[ano] = 0;
     });
 
-    // Para cada programa, calcular valores e quantitativos por ano
+  // Para cada programa, calcular valores e quantitativos por ano
     for (const programa of programasRows) {
       const programaData: ProgramaData = {
         id: programa.id,
@@ -68,6 +87,10 @@ export async function GET() {
 
       // Buscar dados por ano para este programa
       for (const ano of anos) {
+        // Montar trechos de SQL para filtro por regional
+        const regionalJoin = '';
+        const regionalWhere = filtrarPorRegional ? ` AND projetos.unidade = ?` : '';
+
         // Valores por ano
         const [valorRows] = await conn.query<ProjetoRow[]>(`
           SELECT 
@@ -75,23 +98,27 @@ export async function GET() {
               CAST(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(valor_aprovado, '0'), '.', ''), ',', '.'), ' ', ''), 'R$', '') AS DECIMAL(15,2))
             ), 0) AS valor_total
           FROM projetos
+          ${regionalJoin}
           WHERE codigo_programa = ?
           AND codigo_situacao = 4
           AND YEAR(final) = ?
           AND responsavel != ''
           AND responsavel IS NOT NULL
-        `, [programa.id, ano]);
+          ${regionalWhere}
+  `, filtrarPorRegional ? [programa.id, ano, selectedRegionalId as number] : [programa.id, ano]);
 
         // Quantidade de projetos por ano
         const [qtdRows] = await conn.query<ProjetoRow[]>(`
           SELECT COUNT(*) AS total_projetos
           FROM projetos
+          ${regionalJoin}
           WHERE codigo_programa = ?
           AND codigo_situacao = 4
           AND YEAR(final) = ?
           AND responsavel != ''
           AND responsavel IS NOT NULL
-        `, [programa.id, ano]);
+          ${regionalWhere}
+  `, filtrarPorRegional ? [programa.id, ano, selectedRegionalId as number] : [programa.id, ano]);
 
         const valorAno = Number(valorRows?.[0]?.valor_total) || 0;
         const qtdAno = Number(qtdRows?.[0]?.total_projetos) || 0;
@@ -111,26 +138,33 @@ export async function GET() {
       }
 
       // Calcular totais do programa (todos os anos)
+      const regionalJoinTot = '';
+      const regionalWhereTot = filtrarPorRegional ? ` AND projetos.unidade = ?` : '';
+
       const [valorTotalRows] = await conn.query<ProjetoRow[]>(`
         SELECT 
           COALESCE(SUM(
             CAST(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(valor_aprovado, '0'), '.', ''), ',', '.'), ' ', ''), 'R$', '') AS DECIMAL(15,2))
           ), 0) AS valor_total
         FROM projetos
+        ${regionalJoinTot}
         WHERE codigo_programa = ?
         AND codigo_situacao = 4
         AND responsavel != ''
         AND responsavel IS NOT NULL
-      `, [programa.id]);
+        ${regionalWhereTot}
+  `, filtrarPorRegional ? [programa.id, selectedRegionalId as number] : [programa.id]);
 
       const [qtdTotalRows] = await conn.query<ProjetoRow[]>(`
         SELECT COUNT(*) AS total_projetos
         FROM projetos
+        ${regionalJoinTot}
         WHERE codigo_programa = ?
         AND codigo_situacao = 4
         AND responsavel != ''
         AND responsavel IS NOT NULL
-      `, [programa.id]);
+        ${regionalWhereTot}
+  `, filtrarPorRegional ? [programa.id, selectedRegionalId as number] : [programa.id]);
 
       programaData.valor_total = Number(valorTotalRows?.[0]?.valor_total) || 0;
       programaData.total_projetos = Number(qtdTotalRows?.[0]?.total_projetos) || 0;
