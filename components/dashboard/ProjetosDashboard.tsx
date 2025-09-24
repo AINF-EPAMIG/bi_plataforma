@@ -4,9 +4,9 @@ import React, { useEffect, useState, useCallback, useRef, memo } from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, DollarSignIcon, TrendingUpIcon, FilterIcon, DownloadIcon } from 'lucide-react';
+import { CalendarIcon, FilterIcon, DownloadIcon } from 'lucide-react';
 import styles from './RegionaisDashboard.module.css';
 
 interface ProgramaData {
@@ -159,7 +159,7 @@ export default function ProjetosDashboard() {
   const [filtroPrograma] = useState<string>('todos');
   const [filtroAno] = useState<string>('todos');
   const [anoSelecionado, setAnoSelecionado] = useState<number>(0); // 0 representa "Todos os Anos"
-  const [isYearModalOpen, setIsYearModalOpen] = useState(false);
+  
   const [programasSelecionados, setProgramasSelecionados] = useState<number[]>([]);
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'graficos' | 'tabelas'>('graficos');
@@ -241,7 +241,6 @@ export default function ProjetosDashboard() {
     } else {
       setAnoSelecionado(ano);
     }
-    setIsYearModalOpen(false);
   };
 
   // Função para lidar com seleção de programas
