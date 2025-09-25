@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useRef, memo } from 'react';
+import { useEffect, useState, useCallback, useRef, memo, useMemo, Suspense } from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarIcon, FilterIcon, DownloadIcon, MapPin } from 'lucide-react';
-import styles from './RegionaisDashboard.module.css';
 
 interface ProgramaData {
   id: number;
@@ -34,49 +33,38 @@ interface ProjetosData {
   error?: string;
 }
 
-// Alias para manter compatibilidade
-type DashboardData = ProjetosData;
+// Alias para manter compatibilidade - removido
 
 const COLORS = [
-  '#A15CE0',
-  '#5FADE0',
-  '#7FC86E',
-  '#5F5FE0',
-  '#E0C85F',
-  '#7FCFE6',
-  '#E07A5F',
-  '#A15C8F',
-  '#E0A85F',
-  '#5F8F5F',
-  '#7FE07F',
-  '#C85FA1',
-  '#7FE05F',
-  '#5FE0E0',
+  '#A15CE0', '#5FADE0', '#7FC86E', '#5F5FE0', '#E0C85F', '#7FCFE6',
+  '#E07A5F', '#A15C8F', '#E0A85F', '#5F8F5F', '#7FE07F', '#C85FA1', '#7FE05F', '#5FE0E0',
 ];
 
-// Função para renderizar labels com percentuais
-const renderLabel = (entry: { percent: number; value: number }) => {
-  return `${(entry.percent * 100).toFixed(1)}%`;
-};
+// Optimize label rendering - memoized
+const renderLabel = memo((entry: { percent: number }) => 
+  `${(entry.percent * 100).toFixed(1)}%`
+);
+renderLabel.displayName = 'RenderLabel';
 
-// Componente de InfoBox para exibir informações detalhadas - otimizado com memo
-const InfoBox = memo(({ item, isVisible, onClose, color, isAnimating, tipo }: {
+// Optimized InfoBox component with better performance
+const InfoBox = memo(function InfoBox({ item, isVisible, onClose, color, isAnimating, tipo }: {
   item: { nome?: string; value: number; totalSum: number };
   isVisible: boolean;
   onClose: () => void;
   color: string;
   isAnimating: boolean;
   tipo: 'quantitativo' | 'financeiro';
-}) => {
+}) {
   if (!isVisible || !item) return null;
 
+  // Move useMemo hooks before early return
   const percent = ((item.value / item.totalSum) * 100).toFixed(1);
   const valorFormatado = tipo === 'financeiro' 
     ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.value)
     : item.value.toString();
 
   return (
-    <div className={`${styles.infoBox} ${isAnimating ? styles.animating : ''}`}>
+    <div className={`fixed top-4 right-4 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 max-w-xs transition-all duration-300 ${isAnimating ? 'scale-105' : ''}`}>
       <button
         onClick={onClose}
         className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 transition-colors"
@@ -86,10 +74,7 @@ const InfoBox = memo(({ item, isVisible, onClose, color, isAnimating, tipo }: {
       </button>
       
       <div className="flex items-center gap-3 mb-3">
-        <div 
-          className="w-4 h-4 rounded-full flex-shrink-0" 
-          style={{ backgroundColor: color }}
-        />
+        <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
         <h3 className="font-bold text-gray-800 text-lg leading-tight">{item.nome}</h3>
       </div>
       
@@ -112,160 +97,225 @@ const InfoBox = memo(({ item, isVisible, onClose, color, isAnimating, tipo }: {
       </div>
     </div>
   );
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.isVisible === nextProps.isVisible &&
+    prevProps.isAnimating === nextProps.isAnimating &&
+    prevProps.item?.value === nextProps.item?.value &&
+    prevProps.color === nextProps.color
+  );
 });
 
 InfoBox.displayName = 'InfoBox';
 
-// Componente de tooltip customizado - otimizado com memo
-const CustomTooltip = memo(({ active, payload, tipo }: { 
+// Optimized CustomTooltip component
+const CustomTooltip = memo(function CustomTooltip({ active, payload, tipo }: { 
   active?: boolean; 
   payload?: Array<{ value: number; color: string; payload: { name?: string; totalSum: number } }>; 
   tipo: 'quantitativo' | 'financeiro';
-}) => {
-  if (active && payload && payload.length) {
-    const data = payload[0];
-    const value = data.value;
-    const name = data.payload.name;
-    const percent = ((value / data.payload.totalSum) * 100).toFixed(1);
-    const valorFormatado = tipo === 'financeiro' 
-      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
-      : value.toString();
-    
-    return (
-      <div className="bg-white border border-gray-300 rounded-lg shadow-lg p-3 max-w-xs">
-        <div className="flex items-center gap-2 mb-2">
-          <div 
-            className="w-3 h-3 rounded-full" 
-            style={{ backgroundColor: data.color }}
-          />
-          <span className="font-semibold text-gray-800">{name}</span>
-        </div>
-        <div className="text-sm text-gray-600">
-          <div>{tipo === 'financeiro' ? 'Valor:' : 'Projetos:'} <span className="font-bold text-gray-800">{valorFormatado}</span></div>
-          <div>Percentual: <span className="font-bold text-gray-800">{percent}%</span></div>
-        </div>
+}) {
+  if (!active || !payload?.length) return null;
+
+  const data = payload[0];
+  const { value, color } = data;
+  const { name, totalSum } = data.payload;
+  
+  const percent = ((value / totalSum) * 100).toFixed(1);
+  const valorFormatado = tipo === 'financeiro' 
+    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+    : value.toString();
+  
+  return (
+    <div className="bg-white border border-gray-300 rounded-lg shadow-lg p-3 max-w-xs">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
+        <span className="font-semibold text-gray-800">{name}</span>
       </div>
-    );
-  }
-  return null;
+      <div className="text-sm text-gray-600">
+        <div>{tipo === 'financeiro' ? 'Valor:' : 'Projetos:'} <span className="font-bold text-gray-800">{valorFormatado}</span></div>
+        <div>Percentual: <span className="font-bold text-gray-800">{percent}%</span></div>
+      </div>
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  return prevProps.active === nextProps.active && 
+         prevProps.payload?.[0]?.value === nextProps.payload?.[0]?.value;
 });
 
-CustomTooltip.displayName = 'CustomTooltip';
+// Memoized Chart Component for better performance
+const MemoizedPieChart = memo(function MemoizedPieChart({ 
+  data, 
+  onSliceClick, 
+  activeIndex, 
+  hoveredIndex, 
+  animatingIndex, 
+  tipo 
+}: {
+  data: Array<{ name: string; value: number; color: string; totalSum: number }>;
+  onSliceClick: (index: number) => void;
+  activeIndex: number | null;
+  hoveredIndex: number | null;
+  animatingIndex: number | null;
+  tipo: 'quantitativo' | 'financeiro';
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={380}>
+      <PieChart>
+        <Pie
+          data={data}
+          cx="50%"
+          cy="50%"
+          innerRadius={70}
+          outerRadius={110}
+          paddingAngle={2}
+          labelLine={false}
+          label={renderLabel}
+          fill="#8884d8"
+          dataKey="value"
+          onClick={(event: unknown, index: number) => onSliceClick(index)}
+          style={{ cursor: 'pointer' }}
+        >
+          {data.map((_, index) => {
+            const isActive = activeIndex === index;
+            const isHovered = hoveredIndex === index;
+            const isAnimating = animatingIndex === index;
+            
+            return (
+              <Cell 
+                key={`cell-${tipo}-${index}`}
+                fill={COLORS[index % COLORS.length]}
+                stroke={isHovered || isActive ? '#333' : 'transparent'}
+                strokeWidth={isHovered || isActive ? 3 : 0}
+                style={{
+                  filter: isHovered ? 'brightness(1.2)' : isActive ? 'brightness(1.15)' : isAnimating ? 'brightness(1.3)' : 'none',
+                  opacity: isHovered || isActive ? 1 : 0.9,
+                }}
+              />
+            );
+          })}
+        </Pie>
+        <Tooltip content={<CustomTooltip tipo={tipo} />} />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.data === nextProps.data &&
+    prevProps.activeIndex === nextProps.activeIndex &&
+    prevProps.hoveredIndex === nextProps.hoveredIndex &&
+    prevProps.animatingIndex === nextProps.animatingIndex
+  );
+});
 
 export default function ProjetosDashboard() {
   const [data, setData] = useState<ProjetosData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filtroPrograma] = useState<string>('todos');
-  const [filtroAno] = useState<string>('todos');
-  const [anoSelecionado, setAnoSelecionado] = useState<number>(0); // 0 representa "Todos os Anos"
-  
+  const [anoSelecionado, setAnoSelecionado] = useState<number>(0);
   const [programasSelecionados, setProgramasSelecionados] = useState<number[]>([]);
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'graficos' | 'tabelas'>('graficos');
   const [exportandoFinanceiro, setExportandoFinanceiro] = useState(false);
   const [exportandoQuantitativo, setExportandoQuantitativo] = useState(false);
-  const [regionalSelecionado, setRegionalSelecionado] = useState<string>('SEDE');
-  
+  const [regionalSelecionado, setRegionalSelecionado] = useState<string>('GERAL');
 
-  // Estados para controlar as fatias "puxadas" e interatividade dos gráficos
+  // Chart interaction states - optimized
   const [activeQuantitativoIndex, setActiveQuantitativoIndex] = useState<number | null>(null);
   const [activeFinanceiroIndex, setActiveFinanceiroIndex] = useState<number | null>(null);
   const [hoveredQuantitativoIndex, setHoveredQuantitativoIndex] = useState<number | null>(null);
   const [hoveredFinanceiroIndex, setHoveredFinanceiroIndex] = useState<number | null>(null);
-  
-  // Estados para controlar as caixinhas de informações
   const [showQuantitativoInfo, setShowQuantitativoInfo] = useState<number | null>(null);
   const [showFinanceiroInfo, setShowFinanceiroInfo] = useState<number | null>(null);
   const [animatingQuantitativo, setAnimatingQuantitativo] = useState<number | null>(null);
   const [animatingFinanceiro, setAnimatingFinanceiro] = useState<number | null>(null);
+
+  // Optimized refs and memoized values
+  const timeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const anoAtual = useMemo(() => new Date().getFullYear(), []);
+  const anos = useMemo(() => Array.from({ length: 5 }, (_, i) => anoAtual + i), [anoAtual]);
   
-  // Refs para timeouts (não causam re-renders)
-  const animationTimeoutsRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
-  const hoverTimeoutsRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
+  // Memoized regional mapping
+  const labelToId = useMemo(() => ({
+    'SEDE': 1, 'CENTRO OESTE': 2, 'NORTE': 3, 'OESTE': 4,
+    'SUL': 5, 'SUDESTE': 6, 'ILCT': 7, 'ITAP': 8,
+  }), []);
 
-  // Gerar anos dinamicamente (ano atual + 4 anos)
-  const anoAtual = new Date().getFullYear();
-  const anos = Array.from({ length: 5 }, (_, i) => anoAtual + i);
-
+  // Optimized data fetching with better cleanup
   useEffect(() => {
-    // Capturar os valores dos refs no início do effect para uso no cleanup
-    const animationTimeouts = animationTimeoutsRef.current;
-    const hoverTimeouts = hoverTimeoutsRef.current;
-
+    const abortController = new AbortController();
+    const timeouts = timeoutsRef.current;
+    
     const fetchData = async () => {
       try {
+        setLoading(true);
         const params = new URLSearchParams();
-        if (regionalSelecionado && regionalSelecionado !== 'GERAL') {
-          // Map label -> id for API
-          const labelToId: Record<string, number> = {
-            'SEDE': 1,
-            'CENTRO OESTE': 2,
-            'NORTE': 3,
-            'OESTE': 4,
-            'SUL': 5,
-            'SUDESTE': 6,
-            'ILCT': 7,
-            'ITAP': 8,
-          };
-          const rid = labelToId[regionalSelecionado];
-          if (rid) {
-            params.set('regionalId', String(rid));
-          } else {
-            params.set('regional', regionalSelecionado);
-          }
-        }
-        const response = await fetch(`/api/dashboard/projetos${params.toString() ? `?${params.toString()}` : ''}`);
-        const result: DashboardData = await response.json();
         
-        if (result.success) {
+        if (regionalSelecionado && regionalSelecionado !== 'GERAL') {
+          const rid = labelToId[regionalSelecionado as keyof typeof labelToId];
+          if (rid) params.set('regionalId', String(rid));
+          else params.set('regional', regionalSelecionado);
+        }
+
+        const response = await fetch(`/api/dashboard/projetos${params.toString() ? `?${params.toString()}` : ''}`, {
+          signal: abortController.signal
+        });
+        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const result: ProjetosData = await response.json();
+        
+        if (result.success && !abortController.signal.aborted) {
           setData(result);
-          // Inicializar todos os programas como selecionados
           setProgramasSelecionados(result.programas.map(p => p.id));
-        } else {
+          setError(null);
+        } else if (!abortController.signal.aborted) {
           setError(result.error || 'Erro ao carregar dados');
         }
       } catch (error: unknown) {
-        if (error instanceof Error) {
-          setError('Erro de conexão com o servidor: ' + error.message);
-        } else {
-          setError('Erro de conexão com o servidor');
+        if (!abortController.signal.aborted) {
+          setError(error instanceof Error ? `Erro de conexão: ${error.message}` : 'Erro de conexão');
         }
       } finally {
-        setLoading(false);
+        if (!abortController.signal.aborted) setLoading(false);
       }
     };
 
     fetchData();
-
-    // Cleanup de todos os timeouts
+    
     return () => {
-      Object.values(animationTimeouts).forEach(timeout => clearTimeout(timeout));
-      Object.values(hoverTimeouts).forEach(timeout => clearTimeout(timeout));
+      abortController.abort();
+      // Clear all timeouts
+      timeouts.forEach(timeout => clearTimeout(timeout));
+      timeouts.clear();
     };
-  }, [regionalSelecionado]);
+  }, [regionalSelecionado, labelToId]);
 
-  // Função para calcular dados do ano selecionado
-  const getDadosAnoSelecionado = () => {
+  // Memoized data processing functions for better performance
+  const getDadosFiltrados = useCallback(() => {
+    if (!data) return { programas: [], anos: [] };
+
+    let programasFiltrados = data.programas;
+    programasFiltrados = programasFiltrados.filter(p => programasSelecionados.includes(p.id));
+
+    const anosParaExibir = anoSelecionado === 0 ? anos : [anoSelecionado];
+
+    return { programas: programasFiltrados, anos: anosParaExibir };
+  }, [data, programasSelecionados, anoSelecionado, anos]);
+
+  // Memoized year data calculation
+  const getDadosAnoSelecionado = useCallback(() => {
     if (!data) return { valorAno: 0, projetosAno: 0 };
-
     const valorAno = data.totais_gerais.valores_por_ano[anoSelecionado] || 0;
     const projetosAno = data.totais_gerais.projetos_por_ano[anoSelecionado] || 0;
-
     return { valorAno, projetosAno };
-  };
+  }, [data, anoSelecionado]);
 
-  // Função para lidar com seleção de ano
-  const handleYearSelect = (ano: number | 'todos') => {
-    if (ano === 'todos') {
-      setAnoSelecionado(0); // Usar 0 para representar "todos"
-    } else {
-      setAnoSelecionado(ano);
-    }
-  };
+  // Optimized handlers with better timeout management
+  const handleYearSelect = useCallback((ano: number | 'todos') => {
+    setAnoSelecionado(ano === 'todos' ? 0 : ano);
+  }, []);
 
-  // Função para lidar com seleção de programas
-  const handleProgramSelect = (programaId: number) => {
+  const handleProgramSelect = useCallback((programaId: number) => {
     setProgramasSelecionados(prev => {
       if (prev.includes(programaId)) {
         return prev.filter(id => id !== programaId);
@@ -273,69 +323,21 @@ export default function ProjetosDashboard() {
         return [...prev, programaId];
       }
     });
-  };
+  }, []);
 
-  // Função para selecionar/deselecionar todos os programas
-  const handleSelectAllPrograms = () => {
+  const handleSelectAllPrograms = useCallback(() => {
     if (!data) return;
     
-    if (programasSelecionados.length === data.programas.length) {
-      // Se todos estão selecionados, deselecionar todos
-      setProgramasSelecionados([]);
-    } else {
-      // Caso contrário, selecionar todos
-      setProgramasSelecionados(data.programas.map(p => p.id));
-    }
-  };
+    setProgramasSelecionados(prev => 
+      prev.length === data.programas.length ? [] : data.programas.map(p => p.id)
+    );
+  }, [data]);
 
-  // Função para filtrar dados
-  const getDadosFiltrados = () => {
-    if (!data) return { programas: [], anos: [] };
-
-    let programasFiltrados = data.programas;
-
-    // Filtrar por programas selecionados no modal
-    programasFiltrados = programasFiltrados.filter(p => programasSelecionados.includes(p.id));
-
-    if (filtroPrograma !== 'todos') {
-      programasFiltrados = programasFiltrados.filter(p => p.id.toString() === filtroPrograma);
-    }
-
-    // Se um ano específico está selecionado no filtro, usar esse ano
-    // Caso contrário, usar o ano selecionado no card de resumo
-    let anosParaExibir: number[];
-    if (filtroAno !== 'todos') {
-      anosParaExibir = [parseInt(filtroAno)];
-    } else if (anoSelecionado === 0) {
-      // Se "Todos" foi selecionado, mostrar todos os anos
-      anosParaExibir = anos;
-    } else {
-      // Mostrar apenas o ano selecionado
-      anosParaExibir = [anoSelecionado];
-    }
-
-    return {
-      programas: programasFiltrados,
-      anos: anosParaExibir
-    };
-  };
-
-  // Função para preparar dados para gráfico de pizza
-  const prepararDadosPizza = (tipoVisualizacao: 'quantitativo' | 'financeiro') => {
+  // Memoized pizza data preparation
+  const prepararDadosPizza = useMemo(() => (tipoVisualizacao: 'quantitativo' | 'financeiro') => {
     const { programas } = getDadosFiltrados();
     
-    // Determinar o ano para o gráfico de pizza
-    let anoParaPizza: number;
-    if (filtroAno !== 'todos') {
-      // Se um filtro de ano específico está ativo, usar esse ano
-      anoParaPizza = parseInt(filtroAno);
-    } else if (anoSelecionado !== 0) {
-      // Se um ano específico foi selecionado no card de resumo
-      anoParaPizza = anoSelecionado;
-    } else {
-      // Fallback para o ano atual se nenhum estiver selecionado
-      anoParaPizza = anoAtual;
-    }
+    const anoParaPizza = anoSelecionado !== 0 ? anoSelecionado : anoAtual;
     
     const dadosPizza = programas.map((programa, index) => {
       const valor = tipoVisualizacao === 'quantitativo' 
@@ -347,113 +349,60 @@ export default function ProjetosDashboard() {
         value: Number(valor) || 0,
         color: COLORS[index % COLORS.length]
       };
-    }).filter(item => item.value > 0); // Filtrar apenas valores maiores que 0
+    }).filter(item => item.value > 0);
     
-    // Calcular total para percentuais
     const totalSum = dadosPizza.reduce((sum, item) => sum + item.value, 0);
-    
-    // Adicionar totalSum a cada item para cálculos de percentual
     return dadosPizza.map(item => ({ ...item, totalSum }));
-  };
+  }, [getDadosFiltrados, anoSelecionado, anoAtual]);
 
-  // Handlers para os eventos de clique e hover - gráfico quantitativo
-  const handleQuantitativoClick = useCallback((index: number) => {
-    // Limpa timeout anterior se existir
-    if (animationTimeoutsRef.current.quantitativo) {
-      clearTimeout(animationTimeoutsRef.current.quantitativo);
+  // Optimized interaction handlers with debouncing
+  const clearTimeoutKey = useCallback((key: string) => {
+    const timeout = timeoutsRef.current.get(key);
+    if (timeout) {
+      clearTimeout(timeout);
+      timeoutsRef.current.delete(key);
     }
-    
-    // Animação de clique
-    setAnimatingQuantitativo(index);
-    const timeout = setTimeout(() => setAnimatingQuantitativo(null), 300);
-    animationTimeoutsRef.current.quantitativo = timeout;
-    
-    // Controle da fatia ativa
-    setActiveQuantitativoIndex(prev => prev === index ? null : index);
-    
-    // Controle da caixinha de informações
-    setShowQuantitativoInfo(prev => {
-      if (prev === index) {
-        return null; // Fecha se já estava aberta
-      } else {
-        return index; // Abre na nova posição
-      }
-    });
   }, []);
+
+  const setTimeoutKey = useCallback((key: string, callback: () => void, delay: number) => {
+    clearTimeoutKey(key);
+    const timeout = setTimeout(callback, delay);
+    timeoutsRef.current.set(key, timeout);
+  }, [clearTimeoutKey]);
+
+  const handleQuantitativoClick = useCallback((index: number) => {
+    clearTimeoutKey('quantitativo');
+    setAnimatingQuantitativo(index);
+    setTimeoutKey('quantitativo', () => setAnimatingQuantitativo(null), 300);
+    
+    setActiveQuantitativoIndex(prev => prev === index ? null : index);
+    setShowQuantitativoInfo(prev => prev === index ? null : index);
+  }, [clearTimeoutKey, setTimeoutKey]);
 
   const handleQuantitativoMouseEnter = useCallback((index: number) => {
-    // Limpa timeout anterior se existir
-    if (hoverTimeoutsRef.current.quantitativoEnter) {
-      clearTimeout(hoverTimeoutsRef.current.quantitativoEnter);
-    }
-    
-    // Debounce para hover
-    const timeout = setTimeout(() => {
-      setHoveredQuantitativoIndex(index);
-    }, 50);
-    hoverTimeoutsRef.current.quantitativoEnter = timeout;
-  }, []);
+    setTimeoutKey('quantitativoEnter', () => setHoveredQuantitativoIndex(index), 50);
+  }, [setTimeoutKey]);
 
   const handleQuantitativoMouseLeave = useCallback(() => {
-    // Limpa timeout anterior se existir
-    if (hoverTimeoutsRef.current.quantitativoLeave) {
-      clearTimeout(hoverTimeoutsRef.current.quantitativoLeave);
-    }
-    
-    const timeout = setTimeout(() => {
-      setHoveredQuantitativoIndex(null);
-    }, 100);
-    hoverTimeoutsRef.current.quantitativoLeave = timeout;
-  }, []);
+    setTimeoutKey('quantitativoLeave', () => setHoveredQuantitativoIndex(null), 100);
+  }, [setTimeoutKey]);
 
-  // Handlers para os eventos de clique e hover - gráfico financeiro
   const handleFinanceiroClick = useCallback((index: number) => {
-    // Limpa timeout anterior se existir
-    if (animationTimeoutsRef.current.financeiro) {
-      clearTimeout(animationTimeoutsRef.current.financeiro);
-    }
-    
-    // Animação de clique
+    clearTimeoutKey('financeiro');
     setAnimatingFinanceiro(index);
-    const timeout = setTimeout(() => setAnimatingFinanceiro(null), 300);
-    animationTimeoutsRef.current.financeiro = timeout;
+    setTimeoutKey('financeiro', () => setAnimatingFinanceiro(null), 300);
     
-    // Controle da fatia ativa
     setActiveFinanceiroIndex(prev => prev === index ? null : index);
-    
-    // Controle da caixinha de informações
-    setShowFinanceiroInfo(prev => {
-      if (prev === index) {
-        return null; // Fecha se já estava aberta
-      } else {
-        return index; // Abre na nova posição
-      }
-    });
-  }, []);
+    setShowFinanceiroInfo(prev => prev === index ? null : index);
+  }, [clearTimeoutKey, setTimeoutKey]);
 
   const handleFinanceiroMouseEnter = useCallback((index: number) => {
-    // Limpa timeout anterior se existir
-    if (hoverTimeoutsRef.current.financeiroEnter) {
-      clearTimeout(hoverTimeoutsRef.current.financeiroEnter);
-    }
-    
-    const timeout = setTimeout(() => {
-      setHoveredFinanceiroIndex(index);
-    }, 50);
-    hoverTimeoutsRef.current.financeiroEnter = timeout;
-  }, []);
+    setTimeoutKey('financeiroEnter', () => setHoveredFinanceiroIndex(index), 50);
+  }, [setTimeoutKey]);
 
   const handleFinanceiroMouseLeave = useCallback(() => {
-    // Limpa timeout anterior se existir
-    if (hoverTimeoutsRef.current.financeiroLeave) {
-      clearTimeout(hoverTimeoutsRef.current.financeiroLeave);
-    }
-    
-    const timeout = setTimeout(() => {
-      setHoveredFinanceiroIndex(null);
-    }, 100);
-    hoverTimeoutsRef.current.financeiroLeave = timeout;
-  }, []);
+    setTimeoutKey('financeiroLeave', () => setHoveredFinanceiroIndex(null), 100);
+  }, [setTimeoutKey]);
 
   // Função para exportar dados via API
   const exportarDados = async (tipoVisualizacao: 'quantitativo' | 'financeiro') => {
@@ -762,7 +711,7 @@ export default function ProjetosDashboard() {
         /* Gráficos */
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
           {/* Gráfico de Projetos por Programa */}
-          <Card className={`hover:shadow-lg transition-shadow duration-300 ${styles.cardContainer}`}>
+          <Card className="hover:shadow-lg transition-shadow duration-300">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg md:text-xl">
                 Projetos por Programa - {anoSelecionado === 0 ? 'Todos os Anos' : anoSelecionado}
@@ -786,45 +735,16 @@ export default function ProjetosDashboard() {
                 );
               })()}
               
-              <ResponsiveContainer width="100%" height={380} className={styles.chartContainer}>
-                <PieChart>
-                  <Pie
-                    data={prepararDadosPizza('quantitativo')}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={70}
-                    outerRadius={110}
-                    paddingAngle={2}
-                    labelLine={false}
-                    label={renderLabel}
-                    fill="#8884d8"
-                    dataKey="value"
-                    onClick={(event: unknown, index: number) => handleQuantitativoClick(index)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    {prepararDadosPizza('quantitativo').map((_, index) => {
-                      const isActive = activeQuantitativoIndex === index;
-                      const isHovered = hoveredQuantitativoIndex === index;
-                      const isAnimating = animatingQuantitativo === index;
-                      
-                      return (
-                        <Cell 
-                          key={`cell-quantitativo-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                          stroke={isHovered || isActive ? '#333' : 'transparent'}
-                          strokeWidth={isHovered || isActive ? 3 : 0}
-                          className={`pieSlice ${styles.pieSlice}`}
-                          style={{
-                            filter: isHovered ? 'brightness(1.2)' : isActive ? 'brightness(1.15)' : isAnimating ? 'brightness(1.3)' : 'none',
-                            opacity: isHovered || isActive ? 1 : 0.9,
-                          }}
-                        />
-                      );
-                    })}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip tipo="quantitativo" />} />
-                </PieChart>
-              </ResponsiveContainer>
+              <Suspense fallback={<div className="h-80 animate-pulse bg-gray-200 rounded" />}>
+                <MemoizedPieChart
+                  data={prepararDadosPizza('quantitativo')}
+                  onSliceClick={handleQuantitativoClick}
+                  activeIndex={activeQuantitativoIndex}
+                  hoveredIndex={hoveredQuantitativoIndex}
+                  animatingIndex={animatingQuantitativo}
+                  tipo="quantitativo"
+                />
+              </Suspense>
               <div className="mt-4 grid grid-cols-2 gap-2">
                 {prepararDadosPizza('quantitativo').map((programa, index) => (
                   <div 
@@ -857,7 +777,7 @@ export default function ProjetosDashboard() {
           </Card>
 
           {/* Gráfico de Dados Financeiros */}
-          <Card className={`hover:shadow-lg transition-shadow duration-300 ${styles.cardContainer}`}>
+          <Card className="hover:shadow-lg transition-shadow duration-300">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg md:text-xl">
                 Dados Financeiros - {anoSelecionado === 0 ? 'Todos os Anos' : anoSelecionado}
@@ -881,45 +801,16 @@ export default function ProjetosDashboard() {
                 );
               })()}
               
-              <ResponsiveContainer width="100%" height={380} className={styles.chartContainer}>
-                <PieChart>
-                  <Pie
-                    data={prepararDadosPizza('financeiro')}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={70}
-                    outerRadius={110}
-                    paddingAngle={2}
-                    labelLine={false}
-                    label={renderLabel}
-                    fill="#8884d8"
-                    dataKey="value"
-                    onClick={(event: unknown, index: number) => handleFinanceiroClick(index)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    {prepararDadosPizza('financeiro').map((_, index) => {
-                      const isActive = activeFinanceiroIndex === index;
-                      const isHovered = hoveredFinanceiroIndex === index;
-                      const isAnimating = animatingFinanceiro === index;
-                      
-                      return (
-                        <Cell 
-                          key={`cell-financeiro-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                          stroke={isHovered || isActive ? '#333' : 'transparent'}
-                          strokeWidth={isHovered || isActive ? 3 : 0}
-                          className={`pieSlice ${styles.pieSlice}`}
-                          style={{
-                            filter: isHovered ? 'brightness(1.2)' : isActive ? 'brightness(1.15)' : isAnimating ? 'brightness(1.3)' : 'none',
-                            opacity: isHovered || isActive ? 1 : 0.9,
-                          }}
-                        />
-                      );
-                    })}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip tipo="financeiro" />} />
-                </PieChart>
-              </ResponsiveContainer>
+              <Suspense fallback={<div className="h-80 animate-pulse bg-gray-200 rounded" />}>
+                <MemoizedPieChart
+                  data={prepararDadosPizza('financeiro')}
+                  onSliceClick={handleFinanceiroClick}
+                  activeIndex={activeFinanceiroIndex}
+                  hoveredIndex={hoveredFinanceiroIndex}
+                  animatingIndex={animatingFinanceiro}
+                  tipo="financeiro"
+                />
+              </Suspense>
               <div className="mt-4 grid grid-cols-2 gap-2">
                 {prepararDadosPizza('financeiro').map((programa, index) => (
                   <div 
