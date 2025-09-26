@@ -4,15 +4,12 @@ export const dynamic = 'force-dynamic';
 import { getConnection } from "@/lib/db";
 import { RowDataPacket } from "mysql2";
 
-interface ProgramaRow extends RowDataPacket {
-  id: number;
-  nome: string;
-}
-
-interface ProjetoRow extends RowDataPacket {
-  valor_total: number;
-  total_projetos: number;
-  ano: number;
+interface ProjetoResultRow extends RowDataPacket {
+  programa_id: number;
+  programa_nome: string;
+  ano_final: number | null;
+  valor_ano: number;
+  projetos_ano: number;
 }
 
 interface ProgramaData {
@@ -49,21 +46,53 @@ export async function GET(request: NextRequest) {
     const anoAtual = new Date().getFullYear();
     const anos = Array.from({ length: 5 }, (_, i) => anoAtual + i);
     
-    // Buscar programas (excluindo os IDs especificados no código PHP)
-    const [programasRows] = await conn.query<ProgramaRow[]>(`
-      SELECT id, nome 
-      FROM programa 
-      WHERE id NOT IN (5, 8, 17, 18, 19, 6, 4, 15, 12, 2) 
-      ORDER BY nome
-    `);
+    // CONSULTA OTIMIZADA: Uma única consulta para todos os dados
+    const regionalFilter = filtrarPorRegional ? 'AND p.unidade = ?' : '';
+    const queryParams = filtrarPorRegional ? [selectedRegionalId as number] : [];
+    
+    const [resultRows] = await conn.query<ProjetoResultRow[]>(`
+      SELECT 
+        pr.id as programa_id,
+        pr.nome as programa_nome,
+        YEAR(p.final) as ano_final,
+        COALESCE(SUM(
+          CASE 
+            WHEN p.valor_aprovado IS NULL OR p.valor_aprovado = '' THEN 0
+            ELSE CAST(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(p.valor_aprovado, '.', ''), 
+                    ',', '.'
+                  ), 
+                  ' ', ''
+                ), 
+                'R$', ''
+              ) AS DECIMAL(15,2)
+            )
+          END
+        ), 0) as valor_ano,
+        COUNT(*) as projetos_ano
+      FROM programa pr
+      LEFT JOIN projetos p ON pr.id = p.codigo_programa
+        AND p.codigo_situacao = 4
+        AND p.responsavel IS NOT NULL 
+        AND p.responsavel != ''
+        AND p.final IS NOT NULL
+        AND YEAR(p.final) BETWEEN ? AND ?
+        ${regionalFilter}
+      WHERE pr.id NOT IN (5, 8, 17, 18, 19, 6, 4, 15, 12, 2)
+      GROUP BY pr.id, pr.nome, YEAR(p.final)
+      ORDER BY pr.nome, ano_final
+    `, [...queryParams, anoAtual, anoAtual + 4]);
 
-    const programas: ProgramaData[] = [];
+    // Processar resultados
+    const programasMap = new Map<number, ProgramaData>();
     const totaisGerais = {
       valores_por_ano: {} as { [ano: string]: number },
       projetos_por_ano: {} as { [ano: string]: number },
       valor_total_geral: 0,
       total_projetos_geral: 0,
-      // NOVO: Totais específicos do ano vigente
       valor_ano_vigente: 0,
       projetos_ano_vigente: 0
     };
@@ -74,107 +103,54 @@ export async function GET(request: NextRequest) {
       totaisGerais.projetos_por_ano[ano] = 0;
     });
 
-  // Para cada programa, calcular valores e quantitativos por ano
-    for (const programa of programasRows) {
-      const programaData: ProgramaData = {
-        id: programa.id,
-        nome: programa.nome,
-        valores_por_ano: {},
-        projetos_por_ano: {},
-        valor_total: 0,
-        total_projetos: 0
-      };
+    // Processar resultados da consulta
+    for (const row of resultRows) {
+      const programaId = row.programa_id;
+      
+      if (!programasMap.has(programaId)) {
+        programasMap.set(programaId, {
+          id: programaId,
+          nome: row.programa_nome,
+          valores_por_ano: {},
+          projetos_por_ano: {},
+          valor_total: 0,
+          total_projetos: 0
+        });
+      }
 
-      // Buscar dados por ano para este programa
-      for (const ano of anos) {
-        // Montar trechos de SQL para filtro por regional
-        const regionalJoin = '';
-        const regionalWhere = filtrarPorRegional ? ` AND projetos.unidade = ?` : '';
+      const programa = programasMap.get(programaId)!;
+      
+      if (row.ano_final) {
+        const ano = row.ano_final;
+        const valorAno = Number(row.valor_ano) || 0;
+        const projetosAno = Number(row.projetos_ano) || 0;
 
-        // Valores por ano
-        const [valorRows] = await conn.query<ProjetoRow[]>(`
-          SELECT 
-            COALESCE(SUM(
-              CAST(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(valor_aprovado, '0'), '.', ''), ',', '.'), ' ', ''), 'R$', '') AS DECIMAL(15,2))
-            ), 0) AS valor_total
-          FROM projetos
-          ${regionalJoin}
-          WHERE codigo_programa = ?
-          AND codigo_situacao = 4
-          AND YEAR(final) = ?
-          AND responsavel != ''
-          AND responsavel IS NOT NULL
-          ${regionalWhere}
-  `, filtrarPorRegional ? [programa.id, ano, selectedRegionalId as number] : [programa.id, ano]);
+        programa.valores_por_ano[ano] = valorAno;
+        programa.projetos_por_ano[ano] = projetosAno;
 
-        // Quantidade de projetos por ano
-        const [qtdRows] = await conn.query<ProjetoRow[]>(`
-          SELECT COUNT(*) AS total_projetos
-          FROM projetos
-          ${regionalJoin}
-          WHERE codigo_programa = ?
-          AND codigo_situacao = 4
-          AND YEAR(final) = ?
-          AND responsavel != ''
-          AND responsavel IS NOT NULL
-          ${regionalWhere}
-  `, filtrarPorRegional ? [programa.id, ano, selectedRegionalId as number] : [programa.id, ano]);
-
-        const valorAno = Number(valorRows?.[0]?.valor_total) || 0;
-        const qtdAno = Number(qtdRows?.[0]?.total_projetos) || 0;
-
-        programaData.valores_por_ano[ano] = valorAno;
-        programaData.projetos_por_ano[ano] = qtdAno;
+        // Acumular totais do programa
+        programa.valor_total += valorAno;
+        programa.total_projetos += projetosAno;
 
         // Acumular nos totais gerais
         totaisGerais.valores_por_ano[ano] += valorAno;
-        totaisGerais.projetos_por_ano[ano] += qtdAno;
+        totaisGerais.projetos_por_ano[ano] += projetosAno;
 
-        // NOVO: Acumular especificamente para o ano vigente
+        // Acumular para o ano vigente
         if (ano === anoAtual) {
           totaisGerais.valor_ano_vigente += valorAno;
-          totaisGerais.projetos_ano_vigente += qtdAno;
+          totaisGerais.projetos_ano_vigente += projetosAno;
         }
       }
-
-      // Calcular totais do programa (todos os anos)
-      const regionalJoinTot = '';
-      const regionalWhereTot = filtrarPorRegional ? ` AND projetos.unidade = ?` : '';
-
-      const [valorTotalRows] = await conn.query<ProjetoRow[]>(`
-        SELECT 
-          COALESCE(SUM(
-            CAST(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(valor_aprovado, '0'), '.', ''), ',', '.'), ' ', ''), 'R$', '') AS DECIMAL(15,2))
-          ), 0) AS valor_total
-        FROM projetos
-        ${regionalJoinTot}
-        WHERE codigo_programa = ?
-        AND codigo_situacao = 4
-        AND responsavel != ''
-        AND responsavel IS NOT NULL
-        ${regionalWhereTot}
-  `, filtrarPorRegional ? [programa.id, selectedRegionalId as number] : [programa.id]);
-
-      const [qtdTotalRows] = await conn.query<ProjetoRow[]>(`
-        SELECT COUNT(*) AS total_projetos
-        FROM projetos
-        ${regionalJoinTot}
-        WHERE codigo_programa = ?
-        AND codigo_situacao = 4
-        AND responsavel != ''
-        AND responsavel IS NOT NULL
-        ${regionalWhereTot}
-  `, filtrarPorRegional ? [programa.id, selectedRegionalId as number] : [programa.id]);
-
-      programaData.valor_total = Number(valorTotalRows?.[0]?.valor_total) || 0;
-      programaData.total_projetos = Number(qtdTotalRows?.[0]?.total_projetos) || 0;
-
-      // Acumular nos totais gerais (período completo)
-      totaisGerais.valor_total_geral += programaData.valor_total;
-      totaisGerais.total_projetos_geral += programaData.total_projetos;
-
-      programas.push(programaData);
     }
+
+    // Acumular totais gerais
+    for (const programa of programasMap.values()) {
+      totaisGerais.valor_total_geral += programa.valor_total;
+      totaisGerais.total_projetos_geral += programa.total_projetos;
+    }
+
+    const programas = Array.from(programasMap.values());
 
     return NextResponse.json({ 
       success: true,
