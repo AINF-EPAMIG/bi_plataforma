@@ -40,15 +40,21 @@ export async function GET(request: NextRequest) {
     const selectedRegionalId = Number.isFinite(regionalIdParam)
       ? regionalIdParam
       : (regionalParam && regionalParam !== 'GERAL' ? labelToId[regionalParam] : undefined);
-    const filtrarPorRegional = typeof selectedRegionalId === 'number' && Number.isFinite(selectedRegionalId);
+  const hasRegionalId = typeof selectedRegionalId === 'number' && Number.isFinite(selectedRegionalId);
     
-    // Gerar anos dinamicamente (ano atual + 4 anos)
-    const anoAtual = new Date().getFullYear();
-    const anos = Array.from({ length: 5 }, (_, i) => anoAtual + i);
+  // Gerar anos dinamicamente (ano atual + 4 anos)
+  const anoAtual = new Date().getFullYear();
+  const anos = Array.from({ length: 5 }, (_, i) => anoAtual + i);
+  // Intervalo de datas sargável para aproveitar índice em `final`
+  const inicioIntervalo = `${anoAtual}-01-01`;
+  const fimIntervaloExclusivo = `${anoAtual + 5}-01-01`; // exclusivo (>= inicio, < fim)
     
     // CONSULTA OTIMIZADA: Uma única consulta para todos os dados
-    const regionalFilter = filtrarPorRegional ? 'AND p.unidade = ?' : '';
-    const queryParams = filtrarPorRegional ? [selectedRegionalId as number] : [];
+    // Montar filtro regional apenas por ID numérico (coluna p.unidade)
+    const queryParamsBase = [inicioIntervalo, fimIntervaloExclusivo] as (string)[];
+    const regionalFilter = hasRegionalId ? 'AND p.unidade = ?' : '';
+    const regionalParams: Array<number> = hasRegionalId ? [selectedRegionalId as number] : [];
+    const queryParams = [...queryParamsBase, ...regionalParams];
     
     const [resultRows] = await conn.query<ProjetoResultRow[]>(`
       SELECT 
@@ -78,13 +84,13 @@ export async function GET(request: NextRequest) {
         AND p.codigo_situacao = 4
         AND p.responsavel IS NOT NULL 
         AND p.responsavel != ''
-        AND p.final IS NOT NULL
-        AND YEAR(p.final) BETWEEN ? AND ?
-        ${regionalFilter}
+  AND p.final IS NOT NULL
+  AND p.final >= ? AND p.final < ?
+  ${regionalFilter}
       WHERE pr.id NOT IN (5, 8, 17, 18, 19, 6, 4, 15, 12, 2)
       GROUP BY pr.id, pr.nome, YEAR(p.final)
       ORDER BY pr.nome, ano_final
-    `, [...queryParams, anoAtual, anoAtual + 4]);
+  `, queryParams);
 
     // Processar resultados
     const programasMap = new Map<number, ProgramaData>();
