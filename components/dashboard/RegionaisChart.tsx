@@ -64,50 +64,50 @@ export default function RegionaisChart() {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 lg:p-8 hover:shadow-xl transition-shadow duration-300 w-full">
-      <div className="w-full overflow-hidden">
-        <ResponsiveContainer width="100%" height={380}>
+    <div className="bg-white rounded-xl shadow-md p-3 md:p-4 lg:p-5 hover:shadow-lg transition-shadow duration-200 w-full">
+      <div className="w-full overflow-hidden h-[220px] sm:h-[240px] md:h-[260px] lg:h-[300px]">
+        <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={data}
           margin={{
-            top: 20,
-            right: 20,
-            left: 10,
-            bottom: 70,
+            top: 8,
+            right: 12,
+            left: 6,
+            bottom: 60,
           }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
           <XAxis
             dataKey="nome"
-            angle={-45}
+            angle={-35}
             textAnchor="end"
-            height={85}
+            height={70}
             interval={0}
-            tick={{ fill: "#6B7280", fontSize: 11, fontWeight: 500 }}
+            tick={{ fill: "#6B7280", fontSize: 10, fontWeight: 600 }}
           />
           <YAxis
-            tick={{ fill: "#6B7280", fontSize: 11 }}
+            tick={{ fill: "#6B7280", fontSize: 10 }}
             domain={[0, 'dataMax + 5']}
             label={{
               value: "Pesquisadores",
               angle: -90,
               position: "insideLeft",
-              style: { fill: "#6B7280", fontWeight: 600, fontSize: 12 },
+              style: { fill: "#6B7280", fontWeight: 600, fontSize: 10 },
             }}
           />
           <Tooltip
-            cursor={{ fill: "rgba(2, 92, 62, 0.1)" }}
+            cursor={{ fill: "rgba(2, 92, 62, 0.08)" }}
             contentStyle={{
               backgroundColor: "#fff",
-              border: "2px solid #025C3E",
-              borderRadius: "12px",
-              padding: "12px",
-              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+              border: "1px solid #025C3E",
+              borderRadius: "10px",
+              padding: "8px 10px",
+              boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
             }}
             labelStyle={{
               color: "#025C3E",
               fontWeight: "bold",
-              marginBottom: "8px",
+              marginBottom: "6px",
             }}
             itemStyle={{
               color: "#038451",
@@ -118,14 +118,14 @@ export default function RegionaisChart() {
           <Bar
             dataKey="total"
             name="Pesquisadores"
-            radius={[8, 8, 0, 0]}
-            animationDuration={1000}
-            animationBegin={200}
-            label={{ 
+            radius={[6, 6, 0, 0]}
+            animationDuration={700}
+            animationBegin={150}
+            label={{
               position: 'top', 
               fill: '#025C3E', 
-              fontSize: 13, 
-              fontWeight: 'bold' 
+              fontSize: 10,
+              fontWeight: '700'
             }}
           >
             {data.map((entry, index) => (

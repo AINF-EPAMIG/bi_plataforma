@@ -88,6 +88,43 @@
   animation: fadein 0.3s ease-in-out;
 }
 
+/* Animação de slide para sidebar mobile */
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+/* Foco acessível */
+@layer utilities {
+  .focus-visible-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#025C3E] focus-visible:ring-offset-2;
+  }
+
+  /* Números tabulares para KPIs */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Container responsivo */
+  .container-responsive {
+    @apply w-full mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12;
+    max-width: 1600px;
+  }
+}
+
 /* Scrollbar personalizada */
 ::-webkit-scrollbar {
   width: 8px;
@@ -97,6 +134,38 @@
 ::-webkit-scrollbar-track {
   background: #f1f1f1;
   border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #025C3E;
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #038451;
+}
+
+/* Acessibilidade: melhorar contraste em modo de alto contraste */
+@media (prefers-contrast: more) {
+  .text-gray-500 {
+    @apply text-gray-700;
+  }
+
+  .border-gray-300 {
+    @apply border-gray-600;
+  }
+}
+
+/* Reduzir movimento para usuários com preferência */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 ::-webkit-scrollbar-thumb {

@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss"
+import tailwindcssAnimate from "tailwindcss-animate"
 
 const config = {
   darkMode: ["class"],
@@ -17,6 +18,14 @@ const config = {
       screens: {
         "2xl": "1400px",
       },
+    },
+    screens: {
+      'xs': '390px',   // Mobile pequeno
+      'sm': '640px',   // Mobile grande
+      'md': '768px',   // Tablet
+      'lg': '1024px',  // Desktop pequeno
+      'xl': '1440px',  // Desktop grande
+      '2xl': '1536px', // Desktop extra grande
     },
     extend: {
       fontFamily: {
@@ -82,7 +91,7 @@ const config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate],
 } satisfies Config
 
 export default config
