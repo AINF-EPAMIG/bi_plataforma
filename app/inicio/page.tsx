@@ -54,14 +54,14 @@ export default function Page() {
     <div className="flex min-h-screen bg-[#f6f8f9] overflow-x-hidden">
       <AppSidebar />
       {/* HEADER FIXO + Main */}
-      <div className="flex-1 pl-20 md:pl-64 flex flex-col">
+      <div className="flex-1 pl-20 md:pl-64 flex flex-col overflow-x-hidden">
         {/* Shared Header */}
         <Header />
-        <main className="p-4 md:p-6 lg:p-8 w-full max-w-[1400px] mx-auto">
+        <main className="p-2 md:p-3 lg:p-4 w-full max-w-full mx-auto overflow-x-hidden">
           {/* Cards de Estatísticas */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4 mb-5 md:mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 md:gap-3 mb-3 md:mb-4">
             {/* Card Unidades Regionais */}
-            <div className="bg-white rounded-xl shadow-md p-3 md:p-4 border border-[#E2E8EA] hover:shadow-lg transition-all min-h-[110px] md:min-h-[120px] flex flex-col justify-between">
+            <div className="bg-white rounded-xl shadow-md p-2 md:p-3 border border-[#E2E8EA] hover:shadow-lg transition-all min-h-[90px] md:min-h-[100px] flex flex-col justify-between">
               <div className="flex items-start justify-between mb-2">
                 <div className="bg-[#E3F7EF] p-2 md:p-2.5 rounded-lg">
                   <LocationOnIcon className="text-[#025C3E]" fontSize="small" />
@@ -72,7 +72,7 @@ export default function Page() {
               {!loading && <p className="text-xl md:text-2xl font-bold text-black leading-tight">{stats.regionais}</p>}
             </div>
             {/* Card Institutos Tecnológicos */}
-            <div className="bg-white rounded-xl shadow-md p-3 md:p-4 border border-[#E2E8EA] hover:shadow-lg transition-all min-h-[110px] md:min-h-[120px] flex flex-col justify-between">
+            <div className="bg-white rounded-xl shadow-md p-2 md:p-3 border border-[#E2E8EA] hover:shadow-lg transition-all min-h-[90px] md:min-h-[100px] flex flex-col justify-between">
               <div className="flex items-start justify-between mb-2">
                 <div className="bg-[#E3F7EF] p-2 md:p-2.5 rounded-lg">
                   <BusinessIcon className="text-[#025C3E]" fontSize="small" />
@@ -83,7 +83,7 @@ export default function Page() {
               {!loading && <p className="text-xl md:text-2xl font-bold text-black leading-tight">{stats.institutos}</p>}
             </div>
             {/* Card Campos Experimentais */}
-            <div className="bg-white rounded-xl shadow-md p-3 md:p-4 border border-[#E2E8EA] hover:shadow-lg transition-all min-h-[110px] md:min-h-[120px] flex flex-col justify-between">
+            <div className="bg-white rounded-xl shadow-md p-2 md:p-3 border border-[#E2E8EA] hover:shadow-lg transition-all min-h-[90px] md:min-h-[100px] flex flex-col justify-between">
               <div className="flex items-start justify-between mb-2">
                 <div className="bg-[#E3F7EF] p-2 md:p-2.5 rounded-lg">
                   <AgricultureIcon className="text-[#025C3E]" fontSize="small" />
@@ -94,7 +94,7 @@ export default function Page() {
               {!loading && <p className="text-xl md:text-2xl font-bold text-black leading-tight">{stats.fazendas}</p>}
             </div>
             {/* Card Total de Pesquisadores */}
-            <div className="bg-white rounded-xl shadow-md p-3 md:p-4 border border-[#E2E8EA] hover:shadow-lg transition-all min-h-[110px] md:min-h-[120px] flex flex-col justify-between">
+            <div className="bg-white rounded-xl shadow-md p-2 md:p-3 border border-[#E2E8EA] hover:shadow-lg transition-all min-h-[90px] md:min-h-[100px] flex flex-col justify-between">
               <div className="flex items-start justify-between mb-2">
                 <div className="bg-[#E3F7EF] p-2 md:p-2.5 rounded-lg">
                   <GroupIcon className="text-[#025C3E]" fontSize="small" />
@@ -107,7 +107,7 @@ export default function Page() {
           </div>
 
           {/* Navegação entre Gráficos */}
-          <div className="mb-5">
+          <div className="mb-3 md:mb-4">
             <div className="flex gap-2 md:gap-3 justify-center md:justify-start flex-wrap">
               <button
                 onClick={() => setActiveChart('regionais')}

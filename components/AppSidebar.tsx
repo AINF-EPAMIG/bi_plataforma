@@ -25,33 +25,33 @@ export default function AppSidebar({ widthClasses = 'w-16 md:w-64' }: AppSidebar
   }, []);
 
   return (
-    <aside className={`bg-white border-r-4 md:border-r-8 border-[#025C3E] ${widthClasses} h-screen flex flex-col items-center py-4 md:py-8 fixed left-0 top-0 z-40 shadow-lg overflow-y-auto`}>
+    <aside className={`bg-white border-r-4 md:border-r-8 border-[#025C3E] ${widthClasses} h-screen flex flex-col items-center py-2 md:py-4 fixed left-0 top-0 z-40 shadow-lg overflow-y-auto`}>
       <div className="flex flex-col items-center w-full px-2">
-        <Image src="/epamig.svg" alt="Logo EPAMIG" width={112} height={112} className="w-12 h-12 md:w-28 md:h-28 mb-2 md:mb-3" priority />
+        <Image src="/epamig.svg" alt="Logo EPAMIG" width={112} height={112} className="w-10 h-10 md:w-24 md:h-24 mb-1 md:mb-2" priority />
         <Link
           href="/inicio"
-          className="flex items-center justify-center gap-2 bg-[#025C3E] text-white px-3 md:px-5 py-2 rounded-2xl shadow hover:bg-[#038451] transition mb-4 md:mb-8 mt-1 md:mt-2 w-full md:w-auto"
+          className="flex items-center justify-center gap-1.5 bg-[#025C3E] text-white px-2 md:px-4 py-1.5 md:py-2 rounded-2xl shadow hover:bg-[#038451] transition mb-3 md:mb-6 mt-1 w-full md:w-auto text-sm"
         >
-          <HomeIcon fontSize="small" className="md:text-base" />
+          <HomeIcon fontSize="small" />
           <span className="font-bold hidden md:inline">Início</span>
         </Link>
       </div>
       <nav className="flex-1 w-full px-2" ref={dropdownRef} aria-label="Navegação principal">
-        <ul className="space-y-2">
+        <ul className="space-y-1.5">
           {menuItems.map((item, idx) => (
             <li key={item.label} className="relative">
               <button
-                className={`w-full flex items-center justify-between px-3 py-3 rounded-xl border border-transparent transition-all shadow hover:border-[#025C3E] hover:bg-[#E3F7EF] focus:bg-[#E3F7EF] group ${openMenu === idx ? 'bg-[#E3F7EF] border-[#025C3E]' : ''}`}
+                className={`w-full flex items-center justify-between px-2 py-2 rounded-xl border border-transparent transition-all shadow hover:border-[#025C3E] hover:bg-[#E3F7EF] focus:bg-[#E3F7EF] group ${openMenu === idx ? 'bg-[#E3F7EF] border-[#025C3E]' : ''}`}
                 onClick={() => setOpenMenu(openMenu === idx ? -1 : idx)}
                 aria-expanded={openMenu === idx}
                 aria-controls={`submenu-${idx}`}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   {item.icon}
-                  <span className="text-[#025C3E] text-base md:text-lg font-semibold hidden md:inline">{item.label}</span>
+                  <span className="text-[#025C3E] text-sm md:text-base font-semibold hidden md:inline">{item.label}</span>
                 </div>
                 <span className={`text-[#025C3E] transform transition-transform duration-300 hidden md:inline ${openMenu === idx ? 'rotate-180' : 'rotate-0'}`}>
-                  <svg width={20} height={20}><path d="M7 10l5 0" stroke="#025C3E" strokeWidth={3} strokeLinecap="round" /></svg>
+                  <svg width={16} height={16}><path d="M7 10l5 0" stroke="#025C3E" strokeWidth={3} strokeLinecap="round" /></svg>
                 </span>
               </button>
               {openMenu === idx && (
@@ -66,7 +66,7 @@ export default function AppSidebar({ widthClasses = 'w-16 md:w-64' }: AppSidebar
                       <li key={sub.href}>
                         <Link
                           href={sub.href}
-                          className="block py-2 px-4 text-sm text-[#025C3E] rounded hover:bg-[#DFF6EC] font-medium transition"
+                          className="block py-1.5 px-3 text-xs md:text-sm text-[#025C3E] rounded hover:bg-[#DFF6EC] font-medium transition"
                         >
                           {sub.label}
                         </Link>

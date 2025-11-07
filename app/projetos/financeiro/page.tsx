@@ -111,61 +111,69 @@ export default function ProjetosFinanceiro() {
                 {/* Shared Header */}
                 <Header />
 
-                <main className="p-4 md:p-6 lg:p-8 w-full max-w-[1600px] mx-auto">
+                <main className="p-2 md:p-3 lg:p-4 w-full max-w-full mx-auto overflow-x-hidden">
                     {/* Header da Página */}
-                    <div className="mb-6 md:mb-8">
-                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                    <div className="mb-2 md:mb-3">
+                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
                             <div className="flex-1">
-                                <h2 className="text-xl md:text-2xl font-bold text-[#025C3E]">Projetos em Execução</h2>
-                                <p className="text-xs md:text-sm text-gray-600 mt-1">Dados financeiros por programa de pesquisa</p>
+                                <h2 className="text-lg md:text-xl font-bold text-[#025C3E]">Projetos em Execução</h2>
+                                <p className="text-xs text-gray-600 mt-0.5">Dados financeiros por programa de pesquisa</p>
                                 {/* KPIs Compactos */}
                                 {!loading && data && (
-                                    <div className="mt-3" aria-label="Indicadores principais">
-                                        <Stack spacing={2} direction={{ xs: 'column', md: 'row' }} className="mb-3">
+                                    <div className="mt-2" aria-label="Indicadores principais">
+                                        <Stack spacing={1.5} direction={{ xs: 'column', md: 'row' }} sx={{ mb: 1.5 }}>
                                             <Card elevation={3} sx={{ borderRadius: 2, flex: 1 }}>
-                                                <CardContent>
+                                                <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
                                                     <Box display="flex" alignItems="center" justifyContent="space-between">
-                                                        <Box>
-                                                            <Typography variant="subtitle2" color="text.secondary" sx={{ letterSpacing: 0.4 }}>TOTAL DE PROJETOS</Typography>
-                                                            <Typography variant="h5" component="div" sx={{ fontWeight: 700, color: 'primary.main', mt: 0.5 }} aria-label="Total de projetos">{data.totais.quantitativo.toLocaleString('pt-BR')}</Typography>
+                                                        <Box flex={1}>
+                                                            <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.4, fontSize: '0.65rem' }}>
+                                                                TOTAL DE PROJETOS
+                                                            </Typography>
+                                                            <Typography variant="h6" component="div" sx={{ fontWeight: 700, color: '#000000', mt: 0.25, fontSize: '1.1rem' }} aria-label="Total de projetos">
+                                                                {data.totais.quantitativo.toLocaleString('pt-BR')}
+                                                            </Typography>
                                                         </Box>
-                                                        <Box sx={{ ml: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: 1.5, bgcolor: 'primary.main', color: 'primary.contrastText' }} aria-hidden>
-                                                            <AssignmentIcon />
+                                                        <Box sx={{ ml: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 1.5, bgcolor: 'primary.main', color: 'primary.contrastText', flexShrink: 0 }} aria-hidden>
+                                                            <AssignmentIcon fontSize="small" />
                                                         </Box>
                                                     </Box>
                                                 </CardContent>
                                             </Card>
                                             <Card elevation={3} sx={{ borderRadius: 2, flex: 1 }}>
-                                                <CardContent>
+                                                <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
                                                     <Box display="flex" alignItems="center" justifyContent="space-between">
-                                                        <Box>
-                                                            <Typography variant="subtitle2" color="text.secondary" sx={{ letterSpacing: 0.4 }}>VALOR TOTAL APROVADO</Typography>
-                                                            <Typography variant="h5" component="div" sx={{ fontWeight: 700, color: 'primary.main', mt: 0.5 }} aria-label="Valor total aprovado">{data.totais.valorFormatado}</Typography>
+                                                        <Box flex={1}>
+                                                            <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.4, fontSize: '0.65rem' }}>
+                                                                VALOR TOTAL APROVADO
+                                                            </Typography>
+                                                            <Typography variant="h6" component="div" sx={{ fontWeight: 700, color: '#000000', mt: 0.25, fontSize: '1.1rem' }} aria-label="Valor total aprovado">
+                                                                {data.totais.valorFormatado}
+                                                            </Typography>
                                                         </Box>
-                                                        <Box sx={{ ml: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: 1.5, bgcolor: 'success.main', color: 'success.contrastText' }} aria-hidden>
-                                                            <AttachMoneyIcon />
+                                                        <Box sx={{ ml: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 1.5, bgcolor: 'success.main', color: 'success.contrastText', flexShrink: 0 }} aria-hidden>
+                                                            <AttachMoneyIcon fontSize="small" />
                                                         </Box>
                                                     </Box>
                                                 </CardContent>
                                             </Card>
                                         </Stack>
-                                        <div className="w-full mt-4 flex gap-2 items-center">
+                                        <div className="w-full mt-2 flex gap-1.5 items-center flex-wrap">
                                             <button
                                                 onClick={() => setMetric('quantitativo')}
                                                 aria-pressed={metric === 'quantitativo'}
-                                                className={`px-3 md:px-4 py-2 rounded-lg font-semibold text-xs md:text-sm transition-all flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#025C3E] focus-visible:ring-offset-2 ${metric === 'quantitativo' ? 'bg-[#025C3E] text-white shadow-md' : 'bg-white text-[#025C3E] border border-[#025C3E] hover:bg-[#E3F7EF]'}`}
+                                                className={`px-2 py-1 rounded-lg font-semibold text-xs transition-all flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#025C3E] focus-visible:ring-offset-2 ${metric === 'quantitativo' ? 'bg-[#025C3E] text-white shadow-md' : 'bg-white text-[#025C3E] border border-[#025C3E] hover:bg-[#E3F7EF]'}`}
                                                 aria-label="Visualizar quantitativo de projetos por programa"
                                             >
-                                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7h18M3 12h18M3 17h18" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7h18M3 12h18M3 17h18" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                                                 <span>Quantitativo</span>
                                             </button>
                                             <button
                                                 onClick={() => setMetric('valor')}
                                                 aria-pressed={metric === 'valor'}
-                                                className={`px-3 md:px-4 py-2 rounded-lg font-semibold text-xs md:text-sm transition-all flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#025C3E] focus-visible:ring-offset-2 ${metric === 'valor' ? 'bg-[#025C3E] text-white shadow-md' : 'bg-white text-[#025C3E] border border-[#025C3E] hover:bg-[#E3F7EF]'}`}
+                                                className={`px-2 py-1 rounded-lg font-semibold text-xs transition-all flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#025C3E] focus-visible:ring-offset-2 ${metric === 'valor' ? 'bg-[#025C3E] text-white shadow-md' : 'bg-white text-[#025C3E] border border-[#025C3E] hover:bg-[#E3F7EF]'}`}
                                                 aria-label="Visualizar valor aprovado por programa"
                                             >
-                                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 1v22" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="12" cy="12" r="10" strokeWidth="2" /></svg>
+                                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 1v22" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="12" cy="12" r="10" strokeWidth="2" /></svg>
                                                 <span>Valor Aprovado</span>
                                             </button>
                                         </div>
@@ -234,13 +242,13 @@ export default function ProjetosFinanceiro() {
 
                     {/* Visualização Gráfico (PADRÃO - PRIMEIRO) */}
                     {!loading && data && viewMode === 'grafico' && (
-                        <div className="space-y-3 md:space-y-4">
+                        <div className="space-y-2 md:space-y-3">
                             {metric === 'quantitativo' ? (
-                                <div className="bg-white rounded-xl shadow-md p-3 md:p-4 lg:p-5">
-                                    <h3 className="text-xs md:text-sm lg:text-base font-bold text-[#025C3E] mb-2 md:mb-2.5">Quantitativo de Projetos por Programa</h3>
+                                <div className="bg-white rounded-xl shadow-md p-2 md:p-3">
+                                    <h3 className="text-xs md:text-sm font-bold text-[#025C3E] mb-1.5 md:mb-2">Quantitativo de Projetos por Programa</h3>
                                     <div className="w-full overflow-x-auto">
                                         <div className="min-w-[320px]">
-                                            <ResponsiveContainer width="100%" height={240}>
+                                            <ResponsiveContainer width="100%" height={200}>
                                                 <BarChart data={chartDataQuantitativo} margin={{ top: 8, right: 8, left: 0, bottom: 60 }}>
                                                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                                                     <XAxis dataKey="nome" angle={-35} textAnchor="end" height={70} interval={0} tick={createCustomTick(chartDataQuantitativo)} />
@@ -257,11 +265,11 @@ export default function ProjetosFinanceiro() {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="bg-white rounded-xl shadow-md p-3 md:p-4 lg:p-5">
-                                    <h3 className="text-xs md:text-sm lg:text-base font-bold text-[#025C3E] mb-2 md:mb-2.5">Valor Aprovado por Programa</h3>
+                                <div className="bg-white rounded-xl shadow-md p-2 md:p-3">
+                                    <h3 className="text-xs md:text-sm font-bold text-[#025C3E] mb-1.5 md:mb-2">Valor Aprovado por Programa</h3>
                                     <div className="w-full overflow-x-auto">
                                         <div className="min-w-[320px]">
-                                            <ResponsiveContainer width="100%" height={240}>
+                                            <ResponsiveContainer width="100%" height={200}>
                                                 <BarChart data={chartDataValor} margin={{ top: 8, right: 8, left: 0, bottom: 60 }}>
                                                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                                                     <XAxis dataKey="nome" angle={-35} textAnchor="end" height={70} interval={0} tick={createCustomTick(chartDataValor)} />
