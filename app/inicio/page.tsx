@@ -17,13 +17,14 @@ import PeopleIcon from '@mui/icons-material/People';
 import ScienceOutlinedIcon from '@mui/icons-material/ScienceOutlined';
 import RegionaisChart from '@/components/dashboard/RegionaisChart';
 import FazendasChart from '@/components/dashboard/FazendasChart';
+import Image from 'next/image';
 
 const menuItems = [
   {
     label: "Projetos",
     icon: <AssignmentIcon fontSize="small" className="text-[#025C3E]" />,
     sub: [
-      { label: "Financeiro", href: "/projetos/financeiro" },
+      { label: "Visão Geral", href: "/projetos/financeiro" },
       { label: "Finalizados", href: "/projetos/finalizados" },
     ],
   },
@@ -89,26 +90,14 @@ export default function Page() {
     async function fetchStats() {
       try {
         setLoading(true);
-        
-        // Buscar dados das APIs em paralelo
-        const [regionaisRes, institutosRes, fazendasRes] = await Promise.all([
-          fetch('/api/dashboard/regionais'),
-          fetch('/api/dashboard/institutos'),
-          fetch('/api/dashboard/fazendas'),
-        ]);
-
-        const [regionaisData, institutosData, fazendasData] = await Promise.all([
-          regionaisRes.json(),
-          institutosRes.json(),
-          fazendasRes.json(),
-        ]);
-
-        // Valores fixos solicitados + total de pesquisadores vindo da API
+        // Buscar apenas regionais (os demais valores são fixos)
+        const regionaisRes = await fetch('/api/dashboard/regionais');
+        const regionaisData = await regionaisRes.json();
         setStats({
-          regionais: 5, // fixo conforme solicitado
-          institutos: 2, // fixo conforme solicitado
-          fazendas: 21, // fixo conforme solicitado
-          pesquisadores: regionaisData.totalGeral || 0, // soma dos pesquisadores (API)
+          regionais: 5,
+          institutos: 2,
+          fazendas: 21,
+          pesquisadores: regionaisData.totalGeral || 0,
         });
       } catch (error) {
         console.error('Erro ao buscar estatísticas:', error);
@@ -116,7 +105,6 @@ export default function Page() {
         setLoading(false);
       }
     }
-
     fetchStats();
   }, []);
 
@@ -125,7 +113,7 @@ export default function Page() {
       {/* Menu Lateral */}
       <aside className="bg-white border-r-8 border-[#025C3E] w-20 md:w-64 h-screen flex flex-col items-center py-8 fixed left-0 top-0 z-40 shadow-lg overflow-y-auto">
         <div className="flex flex-col items-center w-full">
-          <img src="/epamig.svg" alt="Logo EPAMIG" className="w-28 h-28 mb-3" />
+          <Image src="/epamig.svg" alt="Logo EPAMIG" width={112} height={112} className="w-28 h-28 mb-3" priority />
           <Link
             href="/inicio"
             className="flex items-center gap-2 bg-[#025C3E] text-white px-5 py-2 rounded-2xl shadow hover:bg-[#038451] transition mb-8 mt-2"

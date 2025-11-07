@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import type { Payload } from 'recharts/types/component/DefaultTooltipContent';
 
 interface FazendaData {
   id: number;
@@ -119,9 +120,9 @@ export default function FazendasChart() {
                 color: "#038451",
                 fontWeight: 600,
               }}
-              formatter={(value: number, name: string, props: any) => [
+              formatter={(value: number, _name: string, item: Payload<number, string> | undefined) => [
                 `${value} pesquisadores`,
-                props.payload.nome_fazenda,
+                item?.payload ? (item.payload as unknown as FazendaData).nome_fazenda : ''
               ]}
             />
             <Bar

@@ -23,6 +23,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import Image from 'next/image';
 
 const menuItems = [
   {
@@ -123,29 +124,49 @@ export default function ProjetosFinanceiro() {
   }, []);
 
   // Preparar dados para os gráficos
+  type ChartItem = { nome: string; nomeCompleto: string; valor: number };
   const chartDataQuantitativo = data ? data.programas.map(p => ({
-    nome: p.programa.length > 20 ? p.programa.substring(0, 20) + '...' : p.programa,
+    nome: p.programa.length > 12 ? p.programa.substring(0, 12) + '…' : p.programa,
     nomeCompleto: p.programa,
     valor: p.quantitativo
-  })) : [];
+  })) as ChartItem[] : [];
 
   const chartDataValor = data ? data.programas.map(p => ({
-    nome: p.programa.length > 20 ? p.programa.substring(0, 20) + '...' : p.programa,
+    nome: p.programa.length > 12 ? p.programa.substring(0, 12) + '…' : p.programa,
     nomeCompleto: p.programa,
     valor: p.valorAprovado
-  })) : [];
+  })) as ChartItem[] : [];
+
+  // CUSTOM TICK: usa os dados do gráfico para mostrar tooltip com nome completo
+  const createCustomTick = (chartData: ChartItem[]) => {
+    return function CustomTick(props: { x?: number; y?: number; payload?: { value: string } }) {
+      const { x = 0, y = 0, payload } = props;
+      const short = payload?.value ?? '';
+      const match = chartData.find((d) => d.nome === short || d.nomeCompleto === short);
+      const full = match ? match.nomeCompleto : short;
+      return (
+        <g transform={`translate(${x},${y})`}>
+          <text x={0} y={0} dy={16} textAnchor="end" fill="#274749" fontSize={10} fontWeight={700} style={{ cursor: 'default' }}>
+            <title>{full}</title>
+            {short}
+          </text>
+        </g>
+      );
+    };
+  };
 
   return (
-    <div className="flex min-h-screen bg-[#f6f8f9] overflow-x-hidden">
+    <div className="flex min-h-screen bg-[#f6f8f9]">
       {/* Menu Lateral */}
-      <aside className="bg-white border-r-8 border-[#025C3E] w-20 md:w-64 h-screen flex flex-col items-center py-8 fixed left-0 top-0 z-40 shadow-lg overflow-y-auto">
-        <div className="flex flex-col items-center w-full">
-          <img src="/epamig.svg" alt="Logo EPAMIG" className="w-28 h-28 mb-3" />
+      <aside className="bg-white border-r-4 md:border-r-8 border-[#025C3E] w-16 md:w-64 h-screen flex flex-col items-center py-4 md:py-8 fixed left-0 top-0 z-40 shadow-lg overflow-y-auto">
+        <div className="flex flex-col items-center w-full px-2">
+          <Image src="/epamig.svg" alt="Logo EPAMIG" width={112} height={112} className="w-12 h-12 md:w-28 md:h-28 mb-2 md:mb-3" priority />
           <Link
             href="/inicio"
-            className="flex items-center gap-2 bg-[#025C3E] text-white px-5 py-2 rounded-2xl shadow hover:bg-[#038451] transition mb-8 mt-2"
+            className="flex items-center justify-center gap-2 bg-[#025C3E] text-white px-3 md:px-5 py-2 rounded-2xl shadow hover:bg-[#038451] transition mb-4 md:mb-8 mt-1 md:mt-2 w-full md:w-auto"
           >
-            <HomeIcon fontSize="medium" /> <span className="font-bold hidden md:inline">Início</span>
+            <HomeIcon fontSize="small" className="md:text-base" />
+            <span className="font-bold hidden md:inline">Início</span>
           </Link>
         </div>
         <nav className="flex-1 w-full px-2" ref={dropdownRef}>
@@ -194,11 +215,11 @@ export default function ProjetosFinanceiro() {
       </aside>
 
       {/* HEADER FIXO + Main */}
-      <div className="flex-1 ml-20 md:ml-64 flex flex-col">
-        <header className="bg-white shadow-sm flex flex-col md:flex-row items-center justify-between px-4 md:px-8 py-4 md:py-5 border-b-2 border-[#025C3E] sticky top-0 z-30 w-full gap-3 md:gap-4">
+      <div className="flex-1 ml-16 md:ml-64 flex flex-col overflow-x-hidden">
+        <header className="bg-white shadow-sm flex flex-col md:flex-row items-center justify-between px-3 md:px-6 lg:px-8 py-3 md:py-4 border-b-2 border-[#025C3E] sticky top-0 z-30 w-full gap-2 md:gap-4">
           <div className="text-center md:text-left">
-            <h1 className="text-lg md:text-xl lg:text-2xl font-bold text-[#025C3E] leading-tight">Pesquisa360 EPAMIG</h1>
-            <span className="block text-xs md:text-sm text-[#038451] font-medium mt-1">Onde a pesquisa se transforma em resultados.</span>
+            <h1 className="text-base md:text-lg lg:text-xl font-bold text-[#025C3E] leading-tight">Pesquisa360 EPAMIG</h1>
+            <span className="block text-xs md:text-sm text-[#038451] font-medium mt-0.5">Onde a pesquisa se transforma em resultados.</span>
           </div>
           <nav className="flex items-center divide-x divide-gray-300">
             <Link
@@ -248,14 +269,24 @@ export default function ProjetosFinanceiro() {
         <main className="p-4 md:p-6 lg:p-8 w-full max-w-[1600px] mx-auto">
           {/* Header da Página */}
           <div className="mb-6 md:mb-8">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <h2 className="text-xl md:text-2xl font-bold text-[#025C3E]">
-                  Projetos em Execução
-                </h2>
-                <p className="text-xs md:text-sm text-gray-600 mt-1">
-                  Dados financeiros por programa de pesquisa
-                </p>
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+              <div className="flex-1">
+                <h2 className="text-xl md:text-2xl font-bold text-[#025C3E]">Projetos em Execução</h2>
+                <p className="text-xs md:text-sm text-gray-600 mt-1">Dados financeiros por programa de pesquisa</p>
+                {/* KPIs Compactos */}
+                {!loading && data && (
+                  <dl className="flex flex-wrap gap-2 md:gap-3 mt-3" aria-label="Indicadores principais">
+                    <div className="flex items-baseline gap-2 bg-white border border-[#D1EDE3] rounded-md px-3 py-2 shadow-sm max-w-[220px]">
+                      <dt className="text-[11px] md:text-xs font-medium uppercase tracking-wide text-black/70">Total de Projetos</dt>
+                      <dd className="text-lg md:text-2xl font-extrabold text-black leading-none" aria-label="Total de Projetos">{data.totais.quantitativo}</dd>
+                    </div>
+                    <div className="flex items-baseline gap-2 bg-white border border-[#D1EDE3] rounded-md px-3 py-2 shadow-sm max-w-full md:max-w-[520px]">
+                      <dt className="text-[11px] md:text-xs font-medium uppercase tracking-wide text-black/70">Valor Total Aprovado</dt>
+                      {/* Mostrar valor completo (valorFormatado) com quebra de linha controlada */}
+                      <dd className="text-sm md:text-base lg:text-lg font-extrabold text-black leading-tight whitespace-normal break-words" aria-label="Valor Total Aprovado" title={data.totais.valorFormatado}>{data.totais.valorFormatado}</dd>
+                    </div>
+                  </dl>
+                )}
               </div>
 
               {/* Toggle View Mode */}
@@ -318,160 +349,49 @@ export default function ProjetosFinanceiro() {
 
           {/* Visualização Gráfico (PADRÃO - PRIMEIRO) */}
           {!loading && data && viewMode === 'grafico' && (
-            <div className="space-y-4">
-              {/* Cards de Totais no TOPO */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div className="bg-gradient-to-br from-[#025C3E] to-[#038451] rounded-xl shadow-lg p-6 text-white">
-                  <h3 className="text-sm font-semibold mb-2 opacity-90">Total de Projetos</h3>
-                  <p className="text-4xl md:text-5xl font-bold">{data.totais.quantitativo}</p>
-                </div>
-                
-                <div className="bg-gradient-to-br from-[#025C3E] to-[#038451] rounded-xl shadow-lg p-6 text-white">
-                  <h3 className="text-sm font-semibold mb-2 opacity-90">Valor Total Aprovado</h3>
-                  <p className="text-3xl md:text-4xl font-bold">{data.totais.valorFormatado}</p>
-                </div>
-              </div>
-
+            <div className="space-y-3 md:space-y-4">
               {/* Gráfico de Quantitativo */}
-              <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
-                <h3 className="text-base md:text-lg font-bold text-[#025C3E] mb-4">
-                  Quantitativo de Projetos por Programa
-                </h3>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart
-                    data={chartDataQuantitativo}
-                    margin={{ top: 20, right: 20, left: 10, bottom: 100 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis
-                      dataKey="nome"
-                      angle={-45}
-                      textAnchor="end"
-                      height={120}
-                      interval={0}
-                      tick={{ fill: "#6B7280", fontSize: 10, fontWeight: 500 }}
-                    />
-                    <YAxis
-                      tick={{ fill: "#6B7280", fontSize: 10 }}
-                      label={{
-                        value: "Nº Projetos",
-                        angle: -90,
-                        position: "insideLeft",
-                        style: { fill: "#6B7280", fontWeight: 600, fontSize: 11 },
-                      }}
-                    />
-                    <Tooltip
-                      cursor={{ fill: "rgba(2, 92, 62, 0.1)" }}
-                      contentStyle={{
-                        backgroundColor: "#fff",
-                        border: "2px solid #025C3E",
-                        borderRadius: "12px",
-                        padding: "12px",
-                      }}
-                      formatter={(value: number, name: string, props: any) => [
-                        `${value} projetos`,
-                        props.payload.nomeCompleto,
-                      ]}
-                    />
-                    <Bar
-                      dataKey="valor"
-                      radius={[8, 8, 0, 0]}
-                      label={{
-                        position: 'top',
-                        fill: '#025C3E',
-                        fontSize: 11,
-                        fontWeight: 'bold',
-                      }}
-                    >
-                      {chartDataQuantitativo.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                          className="hover:opacity-80 transition-opacity cursor-pointer"
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="bg-white rounded-xl shadow-md p-3 md:p-4 lg:p-5">
+                <h3 className="text-xs md:text-sm lg:text-base font-bold text-[#025C3E] mb-2 md:mb-2.5">Quantitativo de Projetos por Programa</h3>
+                <div className="w-full overflow-x-auto">
+                  <div className="min-w-[320px]">
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart data={chartDataQuantitativo} margin={{ top: 5, right: 6, left: 0, bottom: 65 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                        <XAxis dataKey="nome" angle={-40} textAnchor="end" height={80} interval={0} tick={createCustomTick(chartDataQuantitativo)} />
+                        <YAxis tick={{ fill: "#6B7280", fontSize: 10 }} label={{ value: "Nº Proj.", angle: -90, position: "insideLeft", style: { fill: "#6B7280", fontWeight: 600, fontSize: 10 } }} />
+                        <Tooltip cursor={{ fill: "rgba(2,92,62,0.08)" }} contentStyle={{ backgroundColor: '#fff', border: '1px solid #025C3E', borderRadius: '8px', padding: '6px 8px' }} formatter={(value: number) => [`${value} projetos`, 'Quantidade']} labelFormatter={(label, payload) => payload?.[0]?.payload?.nomeCompleto || label} />
+                        <Bar dataKey="valor" radius={[5,5,0,0]} label={{ position: 'top', fill: '#025C3E', fontSize: 10, fontWeight: '600' }}>
+                          {chartDataQuantitativo.map((entry, index) => (
+                            <Cell key={`cell-qtd-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               </div>
 
               {/* Gráfico de Valores */}
-              <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
-                <h3 className="text-base md:text-lg font-bold text-[#025C3E] mb-4">
-                  Valor Aprovado por Programa
-                </h3>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart
-                    data={chartDataValor}
-                    margin={{ top: 20, right: 20, left: 10, bottom: 100 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis
-                      dataKey="nome"
-                      angle={-45}
-                      textAnchor="end"
-                      height={120}
-                      interval={0}
-                      tick={{ fill: "#6B7280", fontSize: 10, fontWeight: 500 }}
-                    />
-                    <YAxis
-                      tick={{ fill: "#6B7280", fontSize: 10 }}
-                      tickFormatter={(value) => 
-                        new Intl.NumberFormat('pt-BR', {
-                          notation: 'compact',
-                          compactDisplay: 'short',
-                          style: 'currency',
-                          currency: 'BRL'
-                        }).format(value)
-                      }
-                      label={{
-                        value: "Valor (R$)",
-                        angle: -90,
-                        position: "insideLeft",
-                        style: { fill: "#6B7280", fontWeight: 600, fontSize: 11 },
-                      }}
-                    />
-                    <Tooltip
-                      cursor={{ fill: "rgba(2, 92, 62, 0.1)" }}
-                      contentStyle={{
-                        backgroundColor: "#fff",
-                        border: "2px solid #025C3E",
-                        borderRadius: "12px",
-                        padding: "12px",
-                      }}
-                      formatter={(value: number, name: string, props: any) => [
-                        new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL'
-                        }).format(value),
-                        props.payload.nomeCompleto,
-                      ]}
-                    />
-                    <Bar
-                      dataKey="valor"
-                      radius={[8, 8, 0, 0]}
-                      label={{
-                        position: 'top',
-                        fill: '#025C3E',
-                        fontSize: 10,
-                        fontWeight: 'bold',
-                        formatter: (value: number) => 
-                          new Intl.NumberFormat('pt-BR', {
-                            notation: 'compact',
-                            compactDisplay: 'short'
-                          }).format(value)
-                      }}
-                    >
-                      {chartDataValor.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                          className="hover:opacity-80 transition-opacity cursor-pointer"
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="bg-white rounded-xl shadow-md p-3 md:p-4 lg:p-5">
+                <h3 className="text-xs md:text-sm lg:text-base font-bold text-[#025C3E] mb-2 md:mb-2.5">Valor Aprovado por Programa</h3>
+                <div className="w-full overflow-x-auto">
+                  <div className="min-w-[320px]">
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart data={chartDataValor} margin={{ top: 5, right: 6, left: 0, bottom: 65 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                        <XAxis dataKey="nome" angle={-40} textAnchor="end" height={80} interval={0} tick={createCustomTick(chartDataValor)} />
+                        <YAxis tick={{ fill: "#6B7280", fontSize: 10 }} tickFormatter={(value) => new Intl.NumberFormat('pt-BR', { notation: 'compact', compactDisplay: 'short', style: 'currency', currency: 'BRL' }).format(value)} label={{ value: "Valor (R$)", angle: -90, position: "insideLeft", style: { fill: "#6B7280", fontWeight: 600, fontSize: 10 } }} />
+                        <Tooltip cursor={{ fill: "rgba(2,92,62,0.08)" }} contentStyle={{ backgroundColor: '#fff', border: '1px solid #025C3E', borderRadius: '8px', padding: '6px 8px' }} formatter={(value: number) => [new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value), 'Valor Aprovado']} labelFormatter={(label, payload) => payload?.[0]?.payload?.nomeCompleto || label} />
+                        <Bar dataKey="valor" radius={[5,5,0,0]} label={{ position: 'top', fill: '#025C3E', fontSize: 9, fontWeight: '600', formatter: (value: number) => new Intl.NumberFormat('pt-BR', { notation: 'compact', compactDisplay: 'short' }).format(value) }}>
+                          {chartDataValor.map((entry, index) => (
+                            <Cell key={`cell-val-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               </div>
             </div>
           )}
