@@ -25,7 +25,9 @@ export const menuItems: MenuItem[] = [
     icon: React.createElement(AssignmentIcon, { fontSize: 'small', className: 'text-[#025C3E]' }),
     sub: [
       { label: 'Visão Geral', href: '/projetos/financeiro' },
-      { label: 'Finalizados', href: '/projetos/finalizados' },
+      { label: 'R$ Projeção', href: '/projetos/projecao' },
+      { label: 'Fonte Financiadora', href: '/projetos/fonte' },
+      { label: 'Captação de Recursos', href: '/projetos/captacao' },
     ],
   },
   {
