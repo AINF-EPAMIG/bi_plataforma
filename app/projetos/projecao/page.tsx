@@ -227,7 +227,7 @@ export default function ProjecaoPage() {
 												max={endYear}
 												value={startYear}
 												onChange={e => setStartYear(parseInt(e.target.value) || currentYear)}
-												className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#025C3E] w-full"
+												className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#025C3E] w-full h-[36px]"
 											/>
 										</div>
 										{/* Ano Final */}
@@ -239,7 +239,7 @@ export default function ProjecaoPage() {
 												max={currentYear + 10}
 												value={endYear}
 												onChange={e => setEndYear(parseInt(e.target.value) || (currentYear + 4))}
-												className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#025C3E] w-full"
+												className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#025C3E] w-full h-[36px]"
 											/>
 										</div>
 										{/* Programas Dropdown (seleção única, mesma altura dos anos) */}
@@ -262,7 +262,7 @@ export default function ProjecaoPage() {
 														return found ? found.nome : '';
 													}}
 													MenuProps={{ PaperProps: { style: { maxHeight: 280 } } }}
-													sx={{ maxHeight: 42 }}
+													sx={{ height: 36 }}
 												>
 													{programasOrdenados.map((p) => (
 														<MenuItem key={p.id} value={p.id} dense>
@@ -278,7 +278,7 @@ export default function ProjecaoPage() {
 											<button
 												onClick={clearSelection}
 												disabled={!selectedPrograma}
-												className={`px-2 py-1 text-xs rounded border transition w-full ${selectedPrograma ? 'bg-[#025C3E] text-white border-[#025C3E] hover:bg-[#038451]' : 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed'}`}
+												className={`px-2 py-1 text-xs rounded border transition w-full h-[36px] ${selectedPrograma ? 'bg-[#025C3E] text-white border-[#025C3E] hover:bg-[#038451]' : 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed'}`}
 											>Limpar seleção</button>
 										</div>
 									</div>

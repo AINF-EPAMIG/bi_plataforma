@@ -5,6 +5,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import TableChartIcon from '@mui/icons-material/TableChart';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { Card, CardContent, Typography, Box } from '@mui/material';
 import {
     BarChart,
@@ -17,7 +18,6 @@ import {
     Cell,
 } from "recharts";
 import Header from '@/components/header';
-import Stack from '@mui/material/Stack';
 import AppSidebar from '@/components/AppSidebar';
 
 // Tipos da página (dados financeiros dos programas)
@@ -27,6 +27,9 @@ interface ProgramaFinanceiro {
     quantitativo: number;
     valorAprovado: number;
     valorFormatado: string;
+    quantitativoEpamig: number;
+    valorAprovadoEpamig: number;
+    valorFormatadoEpamig: string;
 }
 
 interface FinanceiroData {
@@ -35,6 +38,9 @@ interface FinanceiroData {
         quantitativo: number;
         valor: number;
         valorFormatado: string;
+        quantitativoEpamig: number;
+        valorEpamig: number;
+        valorFormatadoEpamig: string;
     };
 }
 
@@ -50,6 +56,23 @@ export default function ProjetosFinanceiro() {
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'tabela' | 'grafico'>('grafico');
     const [metric, setMetric] = useState<'quantitativo' | 'valor'>('quantitativo');
+
+    const handleExportExcel = async () => {
+        try {
+            const response = await fetch('/api/export/projetos/financeiro');
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `projetos_financeiro_${new Date().toISOString().split('T')[0]}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('Erro ao exportar para Excel:', error);
+        }
+    };
 
     useEffect(() => {
         async function fetchData() {
@@ -113,88 +136,31 @@ export default function ProjetosFinanceiro() {
 
                 <main className="p-2 md:p-3 lg:p-4 w-full max-w-full mx-auto overflow-x-hidden">
                     {/* Header da Página */}
-                    <div className="mb-2 md:mb-3">
-                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
-                            <div className="flex-1">
+                    <div className="mb-4">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                            <div>
                                 <h2 className="text-lg md:text-xl font-bold text-[#025C3E]">Projetos em Execução</h2>
                                 <p className="text-xs text-gray-600 mt-0.5">Dados financeiros por programa de pesquisa</p>
-                                {/* KPIs Compactos */}
-                                {!loading && data && (
-                                    <div className="mt-2" aria-label="Indicadores principais">
-                                        <Stack spacing={1.5} direction={{ xs: 'column', md: 'row' }} sx={{ mb: 1.5 }}>
-                                            <Card elevation={3} sx={{ borderRadius: 2, flex: 1 }}>
-                                                <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
-                                                    <Box display="flex" alignItems="center" justifyContent="space-between">
-                                                        <Box flex={1}>
-                                                            <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.4, fontSize: '0.65rem' }}>
-                                                                TOTAL DE PROJETOS
-                                                            </Typography>
-                                                            <Typography variant="h6" component="div" sx={{ fontWeight: 700, color: '#000000', mt: 0.25, fontSize: '1.1rem' }} aria-label="Total de projetos">
-                                                                {data.totais.quantitativo.toLocaleString('pt-BR')}
-                                                            </Typography>
-                                                        </Box>
-                                                        <Box sx={{ ml: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 1.5, bgcolor: 'primary.main', color: 'primary.contrastText', flexShrink: 0 }} aria-hidden>
-                                                            <AssignmentIcon fontSize="small" />
-                                                        </Box>
-                                                    </Box>
-                                                </CardContent>
-                                            </Card>
-                                            <Card elevation={3} sx={{ borderRadius: 2, flex: 1 }}>
-                                                <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
-                                                    <Box display="flex" alignItems="center" justifyContent="space-between">
-                                                        <Box flex={1}>
-                                                            <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.4, fontSize: '0.65rem' }}>
-                                                                VALOR TOTAL APROVADO
-                                                            </Typography>
-                                                            <Typography variant="h6" component="div" sx={{ fontWeight: 700, color: '#000000', mt: 0.25, fontSize: '1.1rem' }} aria-label="Valor total aprovado">
-                                                                {data.totais.valorFormatado}
-                                                            </Typography>
-                                                        </Box>
-                                                        <Box sx={{ ml: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 1.5, bgcolor: 'success.main', color: 'success.contrastText', flexShrink: 0 }} aria-hidden>
-                                                            <AttachMoneyIcon fontSize="small" />
-                                                        </Box>
-                                                    </Box>
-                                                </CardContent>
-                                            </Card>
-                                        </Stack>
-                                        <div className="w-full mt-2 flex gap-1.5 items-center flex-wrap">
-                                            <button
-                                                onClick={() => setMetric('quantitativo')}
-                                                aria-pressed={metric === 'quantitativo'}
-                                                className={`px-2 py-1 rounded-lg font-semibold text-xs transition-all flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#025C3E] focus-visible:ring-offset-2 ${metric === 'quantitativo' ? 'bg-[#025C3E] text-white shadow-md' : 'bg-white text-[#025C3E] border border-[#025C3E] hover:bg-[#E3F7EF]'}`}
-                                                aria-label="Visualizar quantitativo de projetos por programa"
-                                            >
-                                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7h18M3 12h18M3 17h18" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                                <span>Quantitativo</span>
-                                            </button>
-                                            <button
-                                                onClick={() => setMetric('valor')}
-                                                aria-pressed={metric === 'valor'}
-                                                className={`px-2 py-1 rounded-lg font-semibold text-xs transition-all flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#025C3E] focus-visible:ring-offset-2 ${metric === 'valor' ? 'bg-[#025C3E] text-white shadow-md' : 'bg-white text-[#025C3E] border border-[#025C3E] hover:bg-[#E3F7EF]'}`}
-                                                aria-label="Visualizar valor aprovado por programa"
-                                            >
-                                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 1v22" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="12" cy="12" r="10" strokeWidth="2" /></svg>
-                                                <span>Valor Aprovado</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-
                             </div>
-
-                            {/* Toggle View Mode */}
+                            
+                            {/* Botões de Ação */}
                             {!loading && data && (
                                 <div className="flex gap-2">
                                     <button
+                                        onClick={handleExportExcel}
+                                        className="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-md min-w-[160px]"
+                                    >
+                                        <FileDownloadIcon fontSize="small" />
+                                        <span>Exportar para Excel</span>
+                                    </button>
+
+                                    <button
                                         onClick={() => setViewMode('grafico')}
-                                        className={`
-                      px-3 md:px-5 py-2 md:py-2.5 rounded-lg font-semibold text-xs md:text-sm
-                      transition-all duration-300 flex items-center gap-1.5
-                      ${viewMode === 'grafico'
-                                            ? 'bg-[#025C3E] text-white shadow-lg scale-105'
-                                            : 'bg-white text-[#025C3E] border-2 border-[#025C3E] hover:bg-[#E3F7EF]'
-                                        }
-                    `}
+                                        className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[120px] ${
+                                            viewMode === 'grafico'
+                                                ? 'bg-[#025C3E] text-white shadow-lg'
+                                                : 'bg-white text-[#025C3E] border-2 border-[#025C3E] hover:bg-[#E3F7EF]'
+                                        }`}
                                     >
                                         <BarChartIcon fontSize="small" />
                                         <span>Gráfico</span>
@@ -202,14 +168,11 @@ export default function ProjetosFinanceiro() {
 
                                     <button
                                         onClick={() => setViewMode('tabela')}
-                                        className={`
-                      px-3 md:px-5 py-2 md:py-2.5 rounded-lg font-semibold text-xs md:text-sm
-                      transition-all duration-300 flex items-center gap-1.5
-                      ${viewMode === 'tabela'
-                                            ? 'bg-[#025C3E] text-white shadow-lg scale-105'
-                                            : 'bg-white text-[#025C3E] border-2 border-[#025C3E] hover:bg-[#E3F7EF]'
-                                        }
-                    `}
+                                        className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 min-w-[120px] ${
+                                            viewMode === 'tabela'
+                                                ? 'bg-[#025C3E] text-white shadow-lg'
+                                                : 'bg-white text-[#025C3E] border-2 border-[#025C3E] hover:bg-[#E3F7EF]'
+                                        }`}
                                     >
                                         <TableChartIcon fontSize="small" />
                                         <span>Tabela</span>
@@ -217,6 +180,97 @@ export default function ProjetosFinanceiro() {
                                 </div>
                             )}
                         </div>
+
+                        {/* KPIs Compactos */}
+                        {!loading && data && (
+                            <div className="mb-4">
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                                    <Card elevation={3} sx={{ borderRadius: 2 }}>
+                                        <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
+                                            <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
+                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 1.5, bgcolor: 'primary.main', color: 'primary.contrastText', mb: 0.5 }} aria-hidden>
+                                                    <AssignmentIcon sx={{ fontSize: 18 }} />
+                                                </Box>
+                                                <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.3, fontSize: '0.6rem', lineHeight: 1.2 }}>
+                                                    TOTAL DE PROJETOS
+                                                </Typography>
+                                                <Typography variant="h6" component="div" sx={{ fontWeight: 700, color: '#000000', mt: 0.25, fontSize: '1rem' }} aria-label="Total de projetos">
+                                                    {data.totais.quantitativo.toLocaleString('pt-BR')}
+                                                </Typography>
+                                            </Box>
+                                        </CardContent>
+                                    </Card>
+
+                                    <Card elevation={3} sx={{ borderRadius: 2 }}>
+                                        <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
+                                            <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
+                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 1.5, bgcolor: 'success.main', color: 'success.contrastText', mb: 0.5 }} aria-hidden>
+                                                    <AttachMoneyIcon sx={{ fontSize: 18 }} />
+                                                </Box>
+                                                <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.3, fontSize: '0.6rem', lineHeight: 1.2 }}>
+                                                    VALOR TOTAL APROVADO
+                                                </Typography>
+                                                <Typography variant="h6" component="div" sx={{ fontWeight: 700, color: '#000000', mt: 0.25, fontSize: '0.95rem' }} aria-label="Valor total aprovado">
+                                                    {data.totais.valorFormatado}
+                                                </Typography>
+                                            </Box>
+                                        </CardContent>
+                                    </Card>
+
+                                    <Card elevation={3} sx={{ borderRadius: 2 }}>
+                                        <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
+                                            <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
+                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 1.5, bgcolor: '#025C3E', color: '#fff', mb: 0.5 }} aria-hidden>
+                                                    <AssignmentIcon sx={{ fontSize: 18 }} />
+                                                </Box>
+                                                <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.3, fontSize: '0.6rem', lineHeight: 1.2 }}>
+                                                    PROJETOS COORD. EPAMIG
+                                                </Typography>
+                                                <Typography variant="h6" component="div" sx={{ fontWeight: 700, color: '#025C3E', mt: 0.25, fontSize: '1rem' }} aria-label="Projetos coordenados pela EPAMIG">
+                                                    {data.totais.quantitativoEpamig.toLocaleString('pt-BR')}
+                                                </Typography>
+                                            </Box>
+                                        </CardContent>
+                                    </Card>
+
+                                    <Card elevation={3} sx={{ borderRadius: 2 }}>
+                                        <CardContent sx={{ py: 1, px: 1.5, '&:last-child': { pb: 1 } }}>
+                                            <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
+                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 1.5, bgcolor: '#025C3E', color: '#fff', mb: 0.5 }} aria-hidden>
+                                                    <AttachMoneyIcon sx={{ fontSize: 18 }} />
+                                                </Box>
+                                                <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.3, fontSize: '0.6rem', lineHeight: 1.2 }}>
+                                                    VALOR COORD. EPAMIG
+                                                </Typography>
+                                                <Typography variant="h6" component="div" sx={{ fontWeight: 700, color: '#025C3E', mt: 0.25, fontSize: '0.95rem' }} aria-label="Valor coordenado pela EPAMIG">
+                                                    {data.totais.valorFormatadoEpamig}
+                                                </Typography>
+                                            </Box>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                                <div className="mt-3 flex gap-1.5 items-center flex-wrap">
+                                    <button
+                                        onClick={() => setMetric('quantitativo')}
+                                        aria-pressed={metric === 'quantitativo'}
+                                        className={`px-2 py-1 rounded-lg font-semibold text-xs transition-all flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#025C3E] focus-visible:ring-offset-2 ${metric === 'quantitativo' ? 'bg-[#025C3E] text-white shadow-md' : 'bg-white text-[#025C3E] border border-[#025C3E] hover:bg-[#E3F7EF]'}`}
+                                        aria-label="Visualizar quantitativo de projetos por programa"
+                                    >
+                                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7h18M3 12h18M3 17h18" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                        <span>Quantitativo</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setMetric('valor')}
+                                        aria-pressed={metric === 'valor'}
+                                        className={`px-2 py-1 rounded-lg font-semibold text-xs transition-all flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#025C3E] focus-visible:ring-offset-2 ${metric === 'valor' ? 'bg-[#025C3E] text-white shadow-md' : 'bg-white text-[#025C3E] border border-[#025C3E] hover:bg-[#E3F7EF]'}`}
+                                        aria-label="Visualizar valor aprovado por programa"
+                                    >
+                                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 1v22" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="12" cy="12" r="10" strokeWidth="2" /></svg>
+                                        <span>Valor Aprovado</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Loading State */}
@@ -242,7 +296,7 @@ export default function ProjetosFinanceiro() {
 
                     {/* Visualização Gráfico (PADRÃO - PRIMEIRO) */}
                     {!loading && data && viewMode === 'grafico' && (
-                        <div className="space-y-2 md:space-y-3">
+                        <div className="space-y-2 md:space-y-3 mt-4">
                             {metric === 'quantitativo' ? (
                                 <div className="bg-white rounded-xl shadow-md p-2 md:p-3">
                                     <h3 className="text-xs md:text-sm font-bold text-[#025C3E] mb-1.5 md:mb-2">Quantitativo de Projetos por Programa</h3>
@@ -291,10 +345,15 @@ export default function ProjetosFinanceiro() {
 
                     {/* Visualização Tabela */}
                     {!loading && data && viewMode === 'tabela' && (
-                        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <div className="bg-white rounded-2xl shadow-lg overflow-hidden mt-4">
                             <div className="overflow-x-auto">
                                 <table className="w-full">
                                     <thead>
+                                    <tr className="bg-[#025C3E] text-white">
+                                        <th colSpan={5} className="px-3 md:px-4 py-3 text-center text-sm md:text-base font-bold">
+                                            Projetos Em Execução - EPAMIG
+                                        </th>
+                                    </tr>
                                     <tr className="bg-[#025C3E] text-white">
                                         <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-bold">
                                             Programa
@@ -304,6 +363,12 @@ export default function ProjetosFinanceiro() {
                                         </th>
                                         <th className="px-3 md:px-4 py-3 text-right text-xs md:text-sm font-bold">
                                             Valor Aprovado
+                                        </th>
+                                        <th className="px-3 md:px-4 py-3 text-center text-xs md:text-sm font-bold">
+                                            Quantitativo - Coord EPAMIG
+                                        </th>
+                                        <th className="px-3 md:px-4 py-3 text-right text-xs md:text-sm font-bold">
+                                            Valor Aprovado - Coord EPAMIG
                                         </th>
                                     </tr>
                                     </thead>
@@ -322,6 +387,12 @@ export default function ProjetosFinanceiro() {
                                             <td className="px-3 md:px-4 py-3 text-right text-xs md:text-sm font-semibold text-gray-800">
                                                 {programa.valorFormatado}
                                             </td>
+                                            <td className="px-3 md:px-4 py-3 text-center text-xs md:text-sm font-semibold text-[#025C3E]">
+                                                {programa.quantitativoEpamig}
+                                            </td>
+                                            <td className="px-3 md:px-4 py-3 text-right text-xs md:text-sm font-semibold text-gray-800">
+                                                {programa.valorFormatadoEpamig}
+                                            </td>
                                         </tr>
                                     ))}
 
@@ -335,6 +406,12 @@ export default function ProjetosFinanceiro() {
                                         </td>
                                         <td className="px-3 md:px-4 py-3 text-right text-xs md:text-sm">
                                             {data.totais.valorFormatado}
+                                        </td>
+                                        <td className="px-3 md:px-4 py-3 text-center text-xs md:text-sm">
+                                            {data.totais.quantitativoEpamig}
+                                        </td>
+                                        <td className="px-3 md:px-4 py-3 text-right text-xs md:text-sm">
+                                            {data.totais.valorFormatadoEpamig}
                                         </td>
                                     </tr>
                                     </tbody>
