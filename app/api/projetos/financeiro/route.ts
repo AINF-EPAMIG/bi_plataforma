@@ -30,103 +30,143 @@ export async function GET() {
   try {
     const conn = await getConnection();
     
-    // Buscar programas (excluindo IDs específicos)
+    // Buscar programas (excluindo IDs específicos) - Igual ao PHP
     const [programas] = await conn.query<ProgramaRow[]>(`
       SELECT * FROM programa 
-      WHERE id NOT IN (5, 8, 17, 18, 19, 6, 4, 15, 12, 2) 
+      WHERE id != 5 AND id != 8 AND id != 17 AND id != 18 AND id != 19 
+        AND id != 6 AND id != 4 AND id != 15 AND id != 12 AND id != 2 
       ORDER BY nome
     `);
 
+    // Buscar totais gerais UMA VEZ (não por programa) - Igual ao PHP
+    // Total geral de projetos (todos os programas)
+    const [totalGeralResult] = await conn.query<CountRow[]>(`
+      SELECT COUNT(*) as total 
+      FROM projetos 
+      WHERE codigo_situacao = '4' 
+        AND codigo_programa IS NOT NULL 
+        AND codigo_programa != ''
+    `);
+    const totalProgramaGeral = totalGeralResult[0]?.total || 0;
+
+    // Total geral de projetos EPAMIG (todos os programas)
+    const [totalGeralEpamigResult] = await conn.query<CountRow[]>(`
+      SELECT COUNT(*) as total 
+      FROM projetos 
+      WHERE codigo_situacao = '4' 
+        AND codigo_programa IS NOT NULL 
+        AND codigo_programa != ''
+        AND responsavel IS NOT NULL
+        AND responsavel != ''
+    `);
+    const totalProgramaGeralEpamig = totalGeralEpamigResult[0]?.total || 0;
+
+    // Valor total geral (todos os programas)
+    const [valorTotalGeralResult] = await conn.query<ValorRow[]>(`
+      SELECT SUM(
+        REPLACE(
+          REPLACE(
+            REPLACE(
+              REPLACE(valor_aprovado, '.', ''), 
+              ',', '.'
+            ), 
+            ' ', ''
+          ), 
+          'R$', ''
+        )
+      ) AS TotalDaSoma
+      FROM projetos 
+      WHERE codigo_situacao = '4' 
+        AND codigo_programa IS NOT NULL 
+        AND codigo_programa != ''
+    `);
+    const sqlTotal = Number(valorTotalGeralResult[0]?.TotalDaSoma) || 0;
+
+    // Valor total geral EPAMIG (todos os programas)
+    const [valorTotalGeralEpamigResult] = await conn.query<ValorRow[]>(`
+      SELECT SUM(
+        REPLACE(
+          REPLACE(
+            REPLACE(
+              REPLACE(valor_aprovado, '.', ''), 
+              ',', '.'
+            ), 
+            ' ', ''
+          ), 
+          'R$', ''
+        )
+      ) AS TotalDaSoma
+      FROM projetos 
+      WHERE codigo_situacao = '4' 
+        AND codigo_programa IS NOT NULL 
+        AND codigo_programa != ''
+        AND responsavel IS NOT NULL
+        AND responsavel != ''
+    `);
+    const sqlTotalEpamig = Number(valorTotalGeralEpamigResult[0]?.TotalDaSoma) || 0;
+
     const dados: ProgramaFinanceiro[] = [];
-    let totalGeralQuantitativo = 0;
-    let totalGeralValor = 0;
-    let totalGeralQuantitativoEpamig = 0;
-    let totalGeralValorEpamig = 0;
 
     // Para cada programa, buscar quantitativo e valor
     for (const programa of programas) {
-      // Quantitativo TOTAL de projetos (sem filtro de responsável)
+      // Quantitativo TOTAL de projetos por programa - Igual ao PHP
       const [countTotalResult] = await conn.query<CountRow[]>(`
-        SELECT COUNT(*) as total 
+        SELECT COUNT(codigo_programa) as total 
         FROM projetos 
         WHERE codigo_programa = ? 
           AND codigo_situacao = '4'
       `, [programa.id]);
-
       const quantitativo = countTotalResult[0]?.total || 0;
 
-      // Quantitativo de projetos EPAMIG (com responsável)
+      // Quantitativo de projetos EPAMIG por programa - Igual ao PHP
       const [countEpamigResult] = await conn.query<CountRow[]>(`
-        SELECT COUNT(*) as total 
+        SELECT COUNT(codigo_programa) as total 
         FROM projetos 
         WHERE codigo_programa = ? 
           AND codigo_situacao = '4' 
-          AND responsavel IS NOT NULL 
           AND responsavel != ''
       `, [programa.id]);
-
       const quantitativoEpamig = countEpamigResult[0]?.total || 0;
 
-      // Valor aprovado TOTAL (sem filtro de responsável)
+      // Valor aprovado TOTAL por programa - Igual ao PHP (SEM filtros adicionais)
       const [valorTotalResult] = await conn.query<ValorRow[]>(`
         SELECT SUM(
-          CAST(
+          REPLACE(
             REPLACE(
               REPLACE(
-                REPLACE(
-                  REPLACE(
-                    REPLACE(valor_aprovado, '.', ''), 
-                    ',', '.'
-                  ), 
-                  ' ', ''
-                ), 
-                'R$', ''
-              ),
-              'R', ''
-            ) AS DECIMAL(15,2)
+                REPLACE(valor_aprovado, '.', ''), 
+                ',', '.'
+              ), 
+              ' ', ''
+            ), 
+            'R$', ''
           )
         ) AS TotalDaSoma
         FROM projetos 
         WHERE codigo_programa = ? 
           AND codigo_situacao = '4'
-          AND valor_aprovado IS NOT NULL
-          AND valor_aprovado != ''
-          AND valor_aprovado != '0'
-          AND valor_aprovado != '0,00'
       `, [programa.id]);
-
       const valorAprovado = Number(valorTotalResult[0]?.TotalDaSoma) || 0;
 
-      // Valor aprovado EPAMIG (com responsável)
+      // Valor aprovado EPAMIG por programa - Igual ao PHP
       const [valorEpamigResult] = await conn.query<ValorRow[]>(`
         SELECT SUM(
-          CAST(
+          REPLACE(
             REPLACE(
               REPLACE(
-                REPLACE(
-                  REPLACE(
-                    REPLACE(valor_aprovado, '.', ''), 
-                    ',', '.'
-                  ), 
-                  ' ', ''
-                ), 
-                'R$', ''
-              ),
-              'R', ''
-            ) AS DECIMAL(15,2)
+                REPLACE(valor_aprovado, '.', ''), 
+                ',', '.'
+              ), 
+              ' ', ''
+            ), 
+            'R$', ''
           )
         ) AS TotalDaSoma
         FROM projetos 
         WHERE codigo_programa = ? 
           AND codigo_situacao = '4' 
-          AND responsavel IS NOT NULL 
           AND responsavel != ''
-          AND valor_aprovado IS NOT NULL
-          AND valor_aprovado != ''
-          AND valor_aprovado != '0'
-          AND valor_aprovado != '0,00'
       `, [programa.id]);
-
       const valorAprovadoEpamig = Number(valorEpamigResult[0]?.TotalDaSoma) || 0;
 
       dados.push({
@@ -145,29 +185,24 @@ export async function GET() {
           currency: 'BRL'
         }).format(valorAprovadoEpamig)
       });
-
-      totalGeralQuantitativo += quantitativo;
-      totalGeralValor += valorAprovado;
-      totalGeralQuantitativoEpamig += quantitativoEpamig;
-      totalGeralValorEpamig += valorAprovadoEpamig;
     }
 
     return NextResponse.json({
       success: true,
       programas: dados,
       totais: {
-        quantitativo: totalGeralQuantitativo,
-        valor: totalGeralValor,
+        quantitativo: totalProgramaGeral,
+        valor: sqlTotal,
         valorFormatado: new Intl.NumberFormat('pt-BR', {
           style: 'currency',
           currency: 'BRL'
-        }).format(totalGeralValor),
-        quantitativoEpamig: totalGeralQuantitativoEpamig,
-        valorEpamig: totalGeralValorEpamig,
+        }).format(sqlTotal),
+        quantitativoEpamig: totalProgramaGeralEpamig,
+        valorEpamig: sqlTotalEpamig,
         valorFormatadoEpamig: new Intl.NumberFormat('pt-BR', {
           style: 'currency',
           currency: 'BRL'
-        }).format(totalGeralValorEpamig)
+        }).format(sqlTotalEpamig)
       }
     });
 
