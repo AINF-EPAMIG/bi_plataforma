@@ -31,11 +31,13 @@ export async function GET(request: NextRequest) {
   const anosParam = searchParams.get('anos'); // Agora aceita múltiplos anos separados por vírgula
   const unidadesParam = searchParams.get('unidades'); // Aceita múltiplas unidades separadas por vírgula
 
-  // Anos padrão: ano atual
+  // Anos padrão: ano atual e anos adicionais (2023, 2022) quando nenhum ano for informado
   const currentYear = new Date().getFullYear();
-  const anos = anosParam 
-    ? anosParam.split(',').map(a => parseInt(a.trim())).filter(a => !isNaN(a))
-    : [currentYear];
+  const parsedAnos = anosParam ? anosParam.split(',').map(a => parseInt(a.trim())).filter(a => !isNaN(a)) : [];
+  const DEFAULT_ADDITIONAL_YEARS: number[] = [2023, 2022];
+  const anos = parsedAnos.length > 0
+    ? parsedAnos
+    : Array.from(new Set([currentYear, currentYear - 1, ...DEFAULT_ADDITIONAL_YEARS]));
   
   const unidadeIds = unidadesParam
     ? unidadesParam.split(',').map(u => parseInt(u.trim())).filter(u => !isNaN(u))
@@ -143,6 +145,10 @@ export async function GET(request: NextRequest) {
       ORDER BY e.ano_equipe DESC
     `;
     const [anosDisponiveis] = await conn.query<RowDataPacket[]>(sqlAnos);
+    // Mapear para array de números e garantir que 2023/2022 estejam presentes
+    let anosDisponiveisArr: number[] = anosDisponiveis.map(a => a.ano_equipe);
+    DEFAULT_ADDITIONAL_YEARS.forEach(y => { if (!anosDisponiveisArr.includes(y)) anosDisponiveisArr.push(y); });
+    anosDisponiveisArr = Array.from(new Set(anosDisponiveisArr)).sort((a, b) => b - a);
 
     return NextResponse.json({
       success: true,
@@ -152,7 +158,7 @@ export async function GET(request: NextRequest) {
       total_geral_captado: totalGeralCaptado,
       total_geral_projetos: totalGeralProjetos,
       unidades_disponiveis: unidadesDisponiveis.map(u => ({ id: u.id, nome: u.nome })),
-      anos_disponiveis: anosDisponiveis.map(a => a.ano_equipe),
+      anos_disponiveis: anosDisponiveisArr,
     });
 
   } catch (error) {

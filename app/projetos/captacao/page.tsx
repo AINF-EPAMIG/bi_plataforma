@@ -54,7 +54,7 @@ const COLORS: string[] = [
 
 export default function CaptacaoPage() {
   const currentYear = new Date().getFullYear();
-  const [selectedAnos, setSelectedAnos] = useState<number[]>([currentYear]);
+  const [selectedAnos, setSelectedAnos] = useState<number[]>([]);
   const [selectedUnidades, setSelectedUnidades] = useState<number[]>([]);
   const [viewMode, setViewMode] = useState<'grafico' | 'tabela' | 'pizza'>('grafico');
   const [data, setData] = useState<ApiResponse | null>(null);
@@ -94,11 +94,14 @@ export default function CaptacaoPage() {
 
   // Dados formatados para gráfico de barras (comparação entre anos)
   const chartData = useMemo(() => {
-    if (!data) return [];
+    if (!data || !data.unidades || data.unidades.length === 0) return [];
+    
+    // Garante que usamos os anos da resposta da API, não apenas os selecionados
+    const anosParaExibir = data.anos_selecionados || selectedAnos;
     
     return data.unidades.map(unidade => {
       const dataPoint: Record<string, string | number> = { nome: unidade.nome };
-      selectedAnos.forEach(ano => {
+      anosParaExibir.forEach(ano => {
         const captacao = unidade.captacao_por_ano[ano];
         dataPoint[`${ano}`] = captacao ? captacao.valor : 0;
       });
@@ -106,25 +109,48 @@ export default function CaptacaoPage() {
     });
   }, [data, selectedAnos]);
 
-  // Dados para gráfico de pizza (total por unidade)
+  // Dados para gráfico de pizza (separado por unidade e ano)
   const pieData = useMemo(() => {
-    if (!data) return [];
-    return data.unidades.map(u => ({
-      name: u.nome,
-      value: u.total_captado,
-    }));
-  }, [data]);
+    if (!data || !data.unidades || data.unidades.length === 0) return [];
+    const anosParaExibir = data.anos_selecionados || selectedAnos;
+    
+    // Se há múltiplos anos, cria uma entrada para cada combinação unidade+ano
+    if (anosParaExibir.length > 1) {
+      const entries: Array<{ name: string; value: number }> = [];
+      data.unidades.forEach(u => {
+        anosParaExibir.forEach(ano => {
+          const captacao = u.captacao_por_ano[ano];
+          if (captacao && captacao.valor > 0) {
+            entries.push({
+              name: `${u.nome} (${ano})`,
+              value: captacao.valor,
+            });
+          }
+        });
+      });
+      return entries;
+    }
+    
+    // Se há apenas um ano, mostra por unidade
+    return data.unidades
+      .filter(u => u.total_captado > 0)
+      .map(u => ({
+        name: u.nome,
+        value: u.total_captado,
+      }));
+  }, [data, selectedAnos]);
 
   const maxValue = useMemo(() => {
-    if (!data) return 0;
+    if (!data || !data.unidades || data.unidades.length === 0) return 0;
+    const anosParaExibir = data.anos_selecionados || selectedAnos;
     const allValues = data.unidades.flatMap(u => 
-      selectedAnos.map(ano => u.captacao_por_ano[ano]?.valor || 0)
+      anosParaExibir.map(ano => u.captacao_por_ano[ano]?.valor || 0)
     );
     return Math.max(...allValues, 0);
   }, [data, selectedAnos]);
 
   const clearSelection = () => {
-    setSelectedAnos([currentYear]);
+    setSelectedAnos([]);
     setSelectedUnidades([]);
   };
 
@@ -308,7 +334,7 @@ export default function CaptacaoPage() {
           {!loading && !error && data && viewMode === 'grafico' && (
             <div className="bg-white rounded-xl shadow-md p-3">
               <h3 className="text-xs md:text-sm font-bold text-[#025C3E] mb-2">
-                Comparação de Captação entre Anos - {selectedAnos.join(', ')}
+                Comparação de Captação entre Anos - {data.anos_selecionados?.join(', ') || selectedAnos.join(', ')}
               </h3>
               <div className="w-full overflow-x-auto">
                 <div className="min-w-[320px]">
@@ -335,7 +361,7 @@ export default function CaptacaoPage() {
                         formatter={(value: number, name) => [formatCurrency(value), `Ano ${name}`]}
                       />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
-                      {selectedAnos.map((ano, idx) => (
+                      {(data.anos_selecionados || selectedAnos).map((ano, idx) => (
                         <Bar
                           key={ano}
                           dataKey={String(ano)}
@@ -355,30 +381,63 @@ export default function CaptacaoPage() {
           {!loading && !error && data && viewMode === 'pizza' && (
             <div className="bg-white rounded-xl shadow-md p-3">
               <h3 className="text-xs md:text-sm font-bold text-[#025C3E] mb-2">
-                Distribuição Total de Captação por Unidade - Anos: {selectedAnos.join(', ')}
+                Distribuição de Captação {(data.anos_selecionados || selectedAnos).length > 1 ? 'por Unidade e Ano' : 'por Unidade'} - Anos: {data.anos_selecionados?.join(', ') || selectedAnos.join(', ')}
               </h3>
-              <div className="w-full overflow-x-auto">
-                <ResponsiveContainer width="100%" height={400}>
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
-                      outerRadius={120}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              {pieData.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <p className="text-sm">Nenhum dado de captação encontrado para os filtros selecionados.</p>
+                  <p className="text-xs mt-1">Tente selecionar outros anos ou unidades.</p>
+                </div>
+              ) : (
+                <div className="w-full flex flex-col lg:flex-row items-center gap-4">
+                  <div className="w-full lg:w-2/3">
+                    <ResponsiveContainer width="100%" height={450}>
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={false}
+                          outerRadius={150}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value: number) => formatCurrency(value)}
+                          contentStyle={{ backgroundColor: '#fff', border: '1px solid #025C3E', borderRadius: 8, fontSize: 12 }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="w-full lg:w-1/3 max-h-[450px] overflow-y-auto pr-2">
+                    <div className="space-y-2">
+                      {pieData.map((entry, index) => {
+                        const total = pieData.reduce((sum, item) => sum + item.value, 0);
+                        const percent = ((entry.value / total) * 100).toFixed(1);
+                        return (
+                          <div key={index} className="flex items-start gap-2 text-xs border-b pb-2">
+                            <div 
+                              className="w-4 h-4 rounded flex-shrink-0 mt-0.5" 
+                              style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-gray-800 break-words">{entry.name}</div>
+                              <div className="text-gray-600 mt-0.5">
+                                {formatCurrency(entry.value)} ({percent}%)
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -389,7 +448,7 @@ export default function CaptacaoPage() {
                 <thead>
                   <tr className="bg-[#025C3E] text-white">
                     <th className="px-3 py-2 text-left font-semibold sticky left-0 bg-[#025C3E] z-10">Unidade</th>
-                    {selectedAnos.map(ano => (
+                    {(data.anos_selecionados || selectedAnos).map(ano => (
                       <th key={`th-${ano}`} className="px-3 py-2 text-center font-semibold whitespace-nowrap">
                         {ano}
                         <br />
@@ -403,7 +462,7 @@ export default function CaptacaoPage() {
                   {data.unidades.map((u, idx) => (
                     <tr key={idx} className="hover:bg-[#E3F7EF]">
                       <td className="px-3 py-2 font-medium text-gray-800 sticky left-0 bg-white z-5">{u.nome}</td>
-                      {selectedAnos.map(ano => {
+                      {(data.anos_selecionados || selectedAnos).map(ano => {
                         const captacao = u.captacao_por_ano[ano];
                         return (
                           <td key={`td-${idx}-${ano}`} className="px-3 py-2 text-center whitespace-nowrap">
