@@ -30,7 +30,7 @@ export default function Header() {
           className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 text-[#025C3E] hover:text-[#038451] font-semibold transition-colors duration-200 text-xs whitespace-nowrap"
         >
           <LibraryBooksIcon fontSize="small" />
-          <span className="hidden sm:inline">Nossa Livraria</span>
+          <span className="hidden sm:inline">Livraria</span>
           <span className="sm:hidden">Livraria</span>
         </Link>
         <Link
